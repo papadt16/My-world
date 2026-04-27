@@ -534,7 +534,7 @@ function updateStudio() {
       : `${count} images are already floating on your invisible globe. Add more to tighten the orbit.`;
     refs.sceneTitle.textContent = count === 1
       ? "One image already suspended on the sphere."
-      : `${count} images wrapped around your invisible sphere.`;
+      : `${count} images wrapped around your sphere.`;
     refs.emptyState.hidden = true;
   }
 
@@ -561,7 +561,7 @@ function renderThumbnailList() {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "thumbnail-item";
-    item.addEventListener("click", () => openPreview(image, false));
+    item.addEventListener("click", () => openPreview(image, true));
 
     const thumb = document.createElement("img");
     thumb.className = "thumbnail-image";
@@ -590,7 +590,7 @@ function ensureStudioViewer() {
 
   if (!state.viewer) {
     state.viewer = new GlobeViewer(refs.globeStage, {
-      onSelect: (image) => openPreview(image, false)
+      onSelect: (image) => openPreview(image, true)
     });
   } else {
     state.viewer.resize();
@@ -1154,6 +1154,8 @@ class GlobeViewer {
     this.drag = {
       active: false,
       moved: false,
+      startX: 0, // <-- Add this
+      startY: 0, // <-- Add this
       lastX: 0,
       lastY: 0
     };
@@ -1317,6 +1319,8 @@ class GlobeViewer {
   handlePointerDown(event) {
     this.drag.active = true;
     this.drag.moved = false;
+    this.drag.startX = event.clientX; // Record exact start point
+    this.drag.startY = event.clientY;
     this.drag.lastX = event.clientX;
     this.drag.lastY = event.clientY;
     this.updatePointer(event);
@@ -1330,12 +1334,17 @@ class GlobeViewer {
       return;
     }
 
-    const deltaX = event.clientX - this.drag.lastX;
-    const deltaY = event.clientY - this.drag.lastY;
+    // Check total distance from the initial click, not just frame-by-frame
+    const totalDistX = Math.abs(event.clientX - this.drag.startX);
+    const totalDistY = Math.abs(event.clientY - this.drag.startY);
 
-    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+    // Only cancel the click if they actually dragged more than 5 pixels
+    if (totalDistX > 5 || totalDistY > 5) {
       this.drag.moved = true;
     }
+
+    const deltaX = event.clientX - this.drag.lastX;
+    const deltaY = event.clientY - this.drag.lastY;
 
     this.rotation.targetY += deltaX * 0.006;
     this.rotation.targetX += deltaY * 0.004;
@@ -1473,6 +1482,10 @@ function createCurvedPanelGeometry(width, height, curveRadius) {
   }
 
   geometry.computeVertexNormals();
+  // Add these two lines so the Raycaster knows where the bent shape actually is!
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere(); 
+  
   return geometry;
 }
 
