@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#06121f">
+  <title>Orbfolio | Floating Globe Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./firebase-config.js"></script>
+</head>
+<body>
+  <div class="background-shell" aria-hidden="true">
+    <div class="aurora aurora-a"></div>
+    <div class="aurora aurora-b"></div>
+    <div class="grid-haze"></div>
+  </div>
+
+  <div id="setup-banner" class="setup-banner" hidden>
+    Firebase setup is still missing. Add your Firebase web config in <code>firebase-config.js</code>, then switch <code>enabled</code> to <code>true</code>.
+  </div>
+
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-stage">
+      <div class="auth-story">
+        <p class="eyebrow">Invisible Sphere Gallery</p>
+        <h1>Turn personal images into a floating globe your friends can explore.</h1>
+        <p class="story-copy">
+          Upload photos, let them sit on an invisible orbit, leave elegant blank space where the globe is still growing, and share the result with one public link.
+        </p>
+
+        <div class="story-highlights">
+          <article class="story-card">
+            <span class="story-number">01</span>
+            <strong>Cloud synced</strong>
+            <p>Images, profile data, and share state travel with the account across devices.</p>
+          </article>
+          <article class="story-card">
+            <span class="story-number">02</span>
+            <strong>Curved image panels</strong>
+            <p>Cards bend around the invisible sphere so the globe stays soft and continuous.</p>
+          </article>
+          <article class="story-card">
+            <span class="story-number">03</span>
+            <strong>Public interactive sharing</strong>
+            <p>Friends open the same globe from a generated link and rotate it themselves.</p>
+          </article>
+        </div>
+
+        <div class="orbital-preview" aria-hidden="true">
+          <div class="preview-ring"></div>
+          <div class="preview-card preview-card-a"></div>
+          <div class="preview-card preview-card-b"></div>
+          <div class="preview-card preview-card-c"></div>
+          <div class="preview-card preview-card-d"></div>
+        </div>
+      </div>
+
+      <div class="auth-panel">
+        <span class="panel-badge">Orbfolio</span>
+        <h2 id="auth-title">Welcome back</h2>
+        <p id="auth-subtitle" class="panel-copy">Sign in to continue building your floating photo sphere.</p>
+
+        <form id="auth-form" class="auth-form" novalidate>
+          <div id="name-field" class="field-group" hidden>
+            <label for="display-name-input">Display name</label>
+            <input id="display-name-input" type="text" autocomplete="name" placeholder="How should your globe be signed?">
+          </div>
+
+          <div class="field-group">
+            <label for="email-input">Email address</label>
+            <input id="email-input" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+
+          <div class="field-group">
+            <label for="password-input">Password</label>
+            <input id="password-input" type="password" autocomplete="current-password" placeholder="At least 6 characters" required>
+          </div>
+
+          <div id="auth-error" class="form-feedback error" hidden></div>
+
+          <button id="auth-submit-btn" class="action-button" type="submit">Log In</button>
+        </form>
+
+        <button id="auth-toggle-btn" class="ghost-toggle" type="button">Need an account? Create one</button>
+
+        <p class="auth-footnote">
+          This app is designed for Firebase Auth, Firestore, and Storage so your uploads stay available on any device you log into.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="app-shell" class="app-shell" hidden>
+    <header class="dashboard-header">
+      <div class="header-block header-left">
+        <button id="share-btn" class="pill-button pill-secondary" type="button">Share Globe</button>
+        <p id="share-copy" class="micro-copy">Generate a public interactive link for friends.</p>
+      </div>
+
+      <div class="dashboard-brand">
+        <span class="brand-kicker">Invisible Orbit Studio</span>
+        <h1>Orbfolio</h1>
+      </div>
+
+      <div class="header-block header-right">
+        <button id="add-image-btn" class="pill-button" type="button">Add Image</button>
+        <button id="logout-btn" class="text-button" type="button">Log Out</button>
+      </div>
+    </header>
+
+    <main class="dashboard-main">
+      <aside class="dashboard-panel">
+        <section class="glass-card intro-card">
+          <p class="eyebrow">Your Globe</p>
+          <h2 id="welcome-heading">Hello there</h2>
+          <p id="welcome-copy" class="panel-copy">Add images and they will settle on a hidden sphere with open air between them.</p>
+
+          <div class="metric-strip">
+            <article class="metric-card">
+              <span>Images</span>
+              <strong id="image-count">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Share status</span>
+              <strong id="share-status">Private</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="glass-card gallery-card">
+          <div class="panel-head">
+            <div>
+              <h3>Gallery Trail</h3>
+              <p class="panel-copy">Recent uploads anchor the globe first.</p>
+            </div>
+            <span id="storage-chip" class="tiny-chip">Cloud ready</span>
+          </div>
+
+          <div id="thumbnail-list" class="thumbnail-list"></div>
+        </section>
+
+        <section class="glass-card tip-card">
+          <h3>How to move through it</h3>
+          <div class="tip-list">
+            <span>Drag to rotate the sphere.</span>
+            <span>Use the mouse wheel to keep it gliding.</span>
+            <span>Click any image to open a larger view.</span>
+          </div>
+        </section>
+      </aside>
+
+      <section class="viewer-panel">
+        <div class="viewer-frame">
+          <div class="viewer-copy">
+            <p class="eyebrow">Interactive Globe</p>
+            <h2 id="scene-title">Floating memories on an invisible orbit.</h2>
+            <p id="scene-caption" class="panel-copy">
+              The sphere itself stays hidden, so empty space remains transparent and you can still see depth through the globe.
+            </p>
+          </div>
+
+          <div id="globe-stage" class="globe-stage"></div>
+
+          <div id="empty-state" class="empty-state">
+            <h3>No images yet</h3>
+            <p>Upload your first set of photos and the orbit will begin to form around the invisible globe.</p>
+          </div>
+
+          <div class="viewer-hint">
+            <span>Drag</span>
+            <span>Scroll</span>
+            <span>Click to enlarge</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <section id="share-shell" class="share-shell" hidden>
+    <header class="share-header">
+      <div>
+        <p class="eyebrow">Shared Globe</p>
+        <h1 id="shared-owner-name">Shared memories</h1>
+        <p id="shared-caption" class="panel-copy">Rotate the globe and open any image for a closer look.</p>
+      </div>
+
+      <div class="share-actions">
+        <button id="open-own-globe-btn" class="pill-button pill-secondary" type="button">Open Studio</button>
+      </div>
+    </header>
+
+    <main class="share-main">
+      <section class="share-viewer">
+        <div class="viewer-frame share-frame">
+          <div id="shared-globe-stage" class="globe-stage"></div>
+
+          <div id="share-empty-state" class="empty-state" hidden>
+            <h3>This globe is still empty</h3>
+            <p>The owner has not published any images into the orbit yet.</p>
+          </div>
+
+          <div class="viewer-hint viewer-hint-share">
+            <span>Drag</span>
+            <span>Scroll</span>
+            <span>Click to enlarge</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <div id="upload-modal" class="modal-shell" hidden>
+    <div class="modal-backdrop" data-close="upload"></div>
+
+    <div class="modal-card">
+      <button id="close-upload-modal-btn" class="modal-close" type="button" aria-label="Close upload panel">Close</button>
+
+      <p class="eyebrow">Add Images</p>
+      <h2>Drop fresh memories into the orbit.</h2>
+      <p class="panel-copy">Choose one or more images. They will be uploaded to Firebase Storage and added to your globe automatically.</p>
+
+      <form id="upload-form" class="upload-form" novalidate>
+        <label class="upload-dropzone" for="image-input">
+          <span class="upload-title">Choose image files</span>
+          <span class="upload-subtitle">PNG, JPG, WEBP, AVIF and GIF are all fine.</span>
+          <input id="image-input" type="file" accept="image/*" multiple hidden>
+        </label>
+
+        <div id="upload-selection" class="upload-selection">No files selected yet.</div>
+        <div id="upload-error" class="form-feedback error" hidden></div>
+
+        <button id="upload-submit-btn" class="action-button" type="submit">Upload Images</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="preview-modal" class="modal-shell" hidden>
+    <div class="modal-backdrop" data-close="preview"></div>
+
+    <div class="modal-card preview-card-shell">
+      <button id="close-preview-modal-btn" class="modal-close" type="button" aria-label="Close preview">Close</button>
+
+      <div class="preview-layout">
+        <div class="preview-image-wrap">
+          <img id="preview-image" alt="">
+        </div>
+
+        <div class="preview-copy">
+          <p class="eyebrow">Selected Image</p>
+          <h2 id="preview-title">Untitled image</h2>
+          <p id="preview-meta" class="panel-copy">Added recently</p>
+          <p class="panel-copy">This expanded view stays comfortably below full screen so the gallery atmosphere is still intact.</p>
+          <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete Image</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
