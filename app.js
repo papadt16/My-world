@@ -154,6 +154,10 @@ function cacheDom() {
   refs.previewMeta = document.getElementById("preview-meta");
   refs.deleteImageBtn = document.getElementById("delete-image-btn");
   refs.downloadBtn = document.getElementById("download-btn"); 
+  refs.toggleSidebarBtn = document.getElementById("toggle-sidebar-btn");
+  refs.expandGlobeBtn = document.getElementById("expand-globe-btn");
+  refs.dashboardPanel = document.querySelector(".dashboard-panel");
+  refs.viewerFrame = document.querySelector(".viewer-frame");
   
   refs.toast = document.getElementById("toast");
 }
@@ -178,6 +182,21 @@ function bindUI() {
       const target = event.currentTarget;
       const closeType = target.getAttribute("data-close");
 
+      if (refs.toggleSidebarBtn) {
+  refs.toggleSidebarBtn.addEventListener("click", () => {
+    refs.dashboardPanel.classList.toggle("is-open");
+  });
+}
+
+if (refs.expandGlobeBtn) {
+  refs.expandGlobeBtn.addEventListener("click", () => {
+    refs.viewerFrame.classList.toggle("is-expanded");
+    refs.expandGlobeBtn.textContent = refs.viewerFrame.classList.contains("is-expanded") ? "Minimize" : "Expand";
+    
+    // Critical: Tell Three.js the container size changed
+    if (state.viewer) state.viewer.resize();
+  });
+}
       if (closeType === "upload") {
         closeUploadModal();
       } else if (closeType === "preview") {
@@ -1236,8 +1255,8 @@ class GlobeViewer {
     }
 
     const count = images.length;
-    const radius = clamp(3.35 + Math.min(count, 140) * 0.013, 3.5, 4.7);
-    const cardWidth = clamp(1.16 - Math.min(count, 140) * 0.0042, 0.62, 1.16);
+    const radius = clamp(3.35 + Math.min(count, 300) * 0.02, 3.5, 9.0); // Grows wider
+    const cardWidth = clamp(1.16 - Math.min(count, 300) * 0.002, 0.5, 1.16); // Shrinks slightly less drastically
     const cardHeight = cardWidth * 1.22;
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy?.() || 1;
 
@@ -1248,6 +1267,8 @@ class GlobeViewer {
       if (image.contentType && image.contentType.startsWith("video/")) {
       textureUrl = textureUrl.replace(/\.[^/.]+$/, ".jpg");
    }
+      textureUrl = textureUrl.replace('/upload/', '/upload/c_fill,w_400/');
+      
       const texture = await createCardTexture(textureUrl, image.name, anisotropy);
       const material = new THREE.MeshBasicMaterial({
         map: texture,
@@ -1344,11 +1365,16 @@ class GlobeViewer {
     this.renderer.domElement.style.cursor = "grab";
   }
 
-  handleWheel(event) {
-    event.preventDefault();
-    this.rotation.targetY -= (event.deltaY + event.deltaX) * 0.0015;
-    this.rotation.targetX = clamp(this.rotation.targetX - event.deltaY * 0.00035, -0.9, 0.9);
-  }
+handleWheel(event) {
+  event.preventDefault();
+  // Instead of rotation, we modify the camera's Z depth.
+  // deltaY is positive when scrolling down (zoom out), negative when scrolling up (zoom in)
+  const zoomSpeed = 0.02;
+  this.camera.position.z += event.deltaY * zoomSpeed;
+  // Clamp it so they can't zoom inside the sphere or zoom out to infinity
+  // The max zoom out (28.0) accounts for a full 300-image expanded sphere
+  this.camera.position.z = clamp(this.camera.position.z, 6.0, 28.0);
+}
 
   updatePointer(event) {
     const bounds = this.renderer.domElement.getBoundingClientRect();
