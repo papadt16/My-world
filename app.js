@@ -18,11 +18,8 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-import {
-  collection, doc, getDoc, getDocs, getFirestore, onSnapshot,
-  orderBy, query, serverTimestamp, setDoc, deleteDoc // <-- Add deleteDoc
+  setDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
@@ -177,26 +174,29 @@ function bindUI() {
   refs.closePreviewModalBtn.addEventListener("click", closePreviewModal);
   refs.deleteImageBtn.addEventListener("click", handleDeleteCurrentImage);
 
+  // Mobile Action Buttons
+  if (refs.toggleSidebarBtn) {
+    refs.toggleSidebarBtn.addEventListener("click", () => {
+      refs.dashboardPanel.classList.toggle("is-open");
+    });
+  }
+
+  if (refs.expandGlobeBtn) {
+    refs.expandGlobeBtn.addEventListener("click", () => {
+      refs.viewerFrame.classList.toggle("is-expanded");
+      refs.expandGlobeBtn.textContent = refs.viewerFrame.classList.contains("is-expanded") ? "Minimize" : "Expand";
+      
+      // Critical: Tell Three.js the container size changed
+      if (state.viewer) state.viewer.resize();
+    });
+  }
+
+  // Modal Backdrop Clicks
   document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
     backdrop.addEventListener("click", (event) => {
       const target = event.currentTarget;
       const closeType = target.getAttribute("data-close");
 
-      if (refs.toggleSidebarBtn) {
-  refs.toggleSidebarBtn.addEventListener("click", () => {
-    refs.dashboardPanel.classList.toggle("is-open");
-  });
-}
-
-if (refs.expandGlobeBtn) {
-  refs.expandGlobeBtn.addEventListener("click", () => {
-    refs.viewerFrame.classList.toggle("is-expanded");
-    refs.expandGlobeBtn.textContent = refs.viewerFrame.classList.contains("is-expanded") ? "Minimize" : "Expand";
-    
-    // Critical: Tell Three.js the container size changed
-    if (state.viewer) state.viewer.resize();
-  });
-}
       if (closeType === "upload") {
         closeUploadModal();
       } else if (closeType === "preview") {
@@ -205,6 +205,7 @@ if (refs.expandGlobeBtn) {
     });
   });
 
+  // Keyboard Shortcuts
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closePreviewModal();
