@@ -245,10 +245,11 @@
          <div class="preview-copy">
             <p class="eyebrow">Selected Image</p>
             <h2 id="preview-title">Untitled image</h2>
-            <div class="description-container">
-            <textarea id="preview-description" placeholder="Give this memory a custom description..."></textarea>
-            <p id="view-only-description" class="panel-copy" hidden></p>
-            </div>
+           <p id="preview-meta" class="panel-copy">Added recently</p>
+           <textarea id="image-description" placeholder="Add description..." style="width:100%; margin-top:10px; border-radius:10px; padding:10px;"></textarea>
+           <button id="save-description-btn" class="pill-button" style="margin-top:10px;" hidden>
+            Save Description
+           </button>
            <div style="display: flex; gap: 12px; margin-top: 18px;">
          <a id="download-btn" class="pill-button pill-secondary" download hidden>Download</a>
          <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete</button>
