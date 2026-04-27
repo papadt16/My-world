@@ -153,7 +153,8 @@ function cacheDom() {
   refs.previewTitle = document.getElementById("preview-title");
   refs.previewMeta = document.getElementById("preview-meta");
   refs.deleteImageBtn = document.getElementById("delete-image-btn");
-
+  refs.downloadBtn = document.getElementById("download-btn"); 
+  
   refs.toast = document.getElementById("toast");
 }
 
@@ -818,18 +819,34 @@ async function syncShareDocument(forceFetch = false) {
 
 function openPreview(image, allowDelete) {
   state.currentPreview = image;
+  const isVideo = image.contentType && image.contentType.startsWith("video/");
 
-  refs.previewImage.src = image.downloadURL;
-  refs.previewImage.alt = image.name || "Selected image";
-  refs.previewTitle.textContent = image.name || "Untitled image";
+  if (isVideo) {
+    refs.previewImage.hidden = true;
+    refs.previewVideo.hidden = false;
+    refs.previewVideo.src = image.downloadURL;
+  } else {
+    refs.previewImage.hidden = false;
+    refs.previewVideo.hidden = true;
+    refs.previewImage.src = image.downloadURL;
+    // Pause video if playing
+    refs.previewVideo.pause();
+    refs.previewVideo.src = "";
+  }
+
+  refs.previewTitle.textContent = image.name || "Untitled item";
   refs.previewMeta.textContent = formatPreviewMeta(image);
   refs.deleteImageBtn.hidden = !allowDelete;
+  refs.downloadBtn.href = image.downloadURL.replace('/upload/', '/upload/fl_attachment/');
+
   refs.previewModal.hidden = false;
 }
 
 function closePreviewModal() {
   refs.previewModal.hidden = true;
   state.currentPreview = null;
+  refs.previewVideo.pause(); // Stop video audio from playing in background
+  refs.previewVideo.src = "";
 }
 
 async function handleDeleteCurrentImage() {
@@ -837,7 +854,21 @@ async function handleDeleteCurrentImage() {
     return;
   }
 
-  showToast("Image deletion is disabled in this no-backend Cloudinary version.", true);
+  try {
+    refs.deleteImageBtn.disabled = true;
+    refs.deleteImageBtn.textContent = "Deleting...";
+    
+    // Delete document from Firestore
+    await deleteDoc(doc(state.db, "users", state.user.uid, "images", state.currentPreview.id));
+    
+    closePreviewModal();
+    showToast("Item removed from your globe.");
+  } catch (error) {
+    showToast(formatUploadError(error), true);
+  } finally {
+    refs.deleteImageBtn.disabled = false;
+    refs.deleteImageBtn.textContent = "Delete";
+  }
 }
 
 function openStudioHome() {
@@ -995,7 +1026,8 @@ async function uploadImageToCloudinary(file, userId, imageId) {
     throw new Error("Cloudinary is not configured yet.");
   }
 
-  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(APP_CONFIG.cloudinary.cloudName)}/image/upload`;
+  const resourceType = file.type.startsWith("video/") ? "video" : "image";
+  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(APP_CONFIG.cloudinary.cloudName)}/${resourceType}/upload`;
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", APP_CONFIG.cloudinary.uploadPreset);
@@ -1210,7 +1242,13 @@ class GlobeViewer {
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy?.() || 1;
 
     const meshes = await Promise.all(images.map(async (image, index) => {
-      const texture = await createCardTexture(image.downloadURL, image.name, anisotropy);
+      let textureUrl = image.downloadURL;
+  
+      // Force video URLs to fetch a generated JPG thumbnail from Cloudinary
+      if (image.contentType && image.contentType.startsWith("video/")) {
+      textureUrl = textureUrl.replace(/\.[^/.]+$/, ".jpg");
+   }
+      const texture = await createCardTexture(textureUrl, image.name, anisotropy);
       const material = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
