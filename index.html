@@ -143,8 +143,16 @@
       <section class="viewer-panel">
         <div class="viewer-frame">
           <div class="viewer-copy">
-            <p class="eyebrow">Interactive Globe</p>
-            <h2 id="scene-title">Floating memories on an invisible orbit.</h2>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+             <p class="eyebrow">Interactive Globe</p>
+             <h2 id="scene-title">Floating memories</h2>
+          </div>
+             <div class="mobile-actions" style="display: flex; gap: 8px;">
+             <button id="toggle-sidebar-btn" class="pill-button pill-secondary mobile-only">Menu</button>
+             <button id="expand-globe-btn" class="pill-button mobile-only">Expand</button>
+          </div>
+          </div>
           </div>
 
           <div id="globe-stage" class="globe-stage"></div>
