@@ -156,6 +156,8 @@ function cacheDom() {
   refs.expandGlobeBtn = document.getElementById("expand-globe-btn");
   refs.dashboardPanel = document.querySelector(".dashboard-panel");
   refs.viewerFrame = document.querySelector(".viewer-frame");
+  refs.imageDescription = document.getElementById("image-description");
+  refs.saveDescriptionBtn = document.getElementById("save-description-btn");
   
   refs.toast = document.getElementById("toast");
 }
@@ -174,7 +176,8 @@ function bindUI() {
 
   refs.closePreviewModalBtn.addEventListener("click", closePreviewModal);
   refs.deleteImageBtn.addEventListener("click", handleDeleteCurrentImage);
-
+  refs.saveDescriptionBtn.addEventListener("click", saveImageDescription);
+  
   // Mobile Action Buttons
   if (refs.toggleSidebarBtn) {
     refs.toggleSidebarBtn.addEventListener("click", () => {
@@ -826,8 +829,9 @@ const sharedImages = images.map((image) => ({
   downloadURL: image.downloadURL,
   width: image.width || null,
   height: image.height || null,
-  contentType: image.contentType || "image/jpeg", // ✅ ADD THIS
-  createdAtMs: image.createdAtMs || Date.now()
+  contentType: image.contentType || "image/jpeg", 
+  createdAtMs: image.createdAtMs || Date.now(),
+  description: image.description || "", 
 }));
   
   await setDoc(doc(state.db, "shared_globes", state.profile.shareId), {
@@ -858,6 +862,11 @@ function openPreview(image, allowDelete) {
   }
 
   refs.previewTitle.textContent = image.name || "Untitled item";
+if (image.description) {
+  refs.previewMeta.textContent = image.description;
+} else {
+  refs.previewMeta.textContent = formatPreviewMeta(image);
+}
   refs.previewMeta.textContent = formatPreviewMeta(image);
   refs.deleteImageBtn.hidden = !allowDelete;
   const isSharedView = !allowDelete; // shared = no delete allowed
@@ -870,6 +879,17 @@ if (isSharedView) {
 }
 
   refs.previewModal.hidden = false;
+  refs.imageDescription.value = image.description || "";
+
+if (allowDelete) {
+  // Owner view
+  refs.imageDescription.disabled = false;
+  refs.saveDescriptionBtn.hidden = false;
+} else {
+  // Shared view
+  refs.imageDescription.disabled = true;
+  refs.saveDescriptionBtn.hidden = true;
+}
 }
 
 function closePreviewModal() {
@@ -1095,6 +1115,26 @@ async function uploadImageToCloudinary(file, userId, imageId) {
     publicId: payload.public_id,
     folder: payload.folder || `${APP_CONFIG.cloudinary.folder}/${userId}`
   };
+}
+
+async function saveImageDescription() {
+  if (!state.user || !state.currentPreview) return;
+
+  try {
+    const newDesc = refs.imageDescription.value;
+
+    await setDoc(
+      doc(state.db, "users", state.user.uid, "images", state.currentPreview.id),
+      {
+        description: newDesc
+      },
+      { merge: true }
+    );
+
+    showToast("Description updated.");
+  } catch (error) {
+    showToast("Failed to save description", true);
+  }
 }
 
 function createId() {
