@@ -558,7 +558,7 @@ function renderThumbnailList() {
     return;
   }
 
-  state.images.slice(0, 5).forEach((image) => {
+  state.images.slice(0, 2).forEach((image) => {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "thumbnail-item";
@@ -687,8 +687,8 @@ async function handleUploadSubmit(event) {
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
 
-      if (!file.type.startsWith("image/")) {
-        failures.push(`${file.name}: not an image file.`);
+     if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+        failures.push(`${file.name}: must be an image or video.`);
         continue;
       }
 
