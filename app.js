@@ -20,6 +20,10 @@ import {
   serverTimestamp,
   setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import {
+  collection, doc, getDoc, getDocs, getFirestore, onSnapshot,
+  orderBy, query, serverTimestamp, setDoc, deleteDoc // <-- Add deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
   appName: "Orbfolio",
