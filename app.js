@@ -701,7 +701,7 @@ async function handleUploadSubmit(event) {
 
       try {
         const imageId = createId();
-        const metrics = await readImageMetrics(file);
+        const metrics = await readMediaMetrics(file);
         const fileLabel = cleanFileLabel(file.name);
         const createdAtMs = Date.now() + index;
         const uploadResult = await uploadImageToCloudinary(file, state.user.uid, imageId);
@@ -1020,25 +1020,39 @@ function cleanFileLabel(name) {
   return name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Untitled image";
 }
 
-function readImageMetrics(file) {
+function readMediaMetrics(file) {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
 
-    image.onload = () => {
-      resolve({
-        width: image.naturalWidth,
-        height: image.naturalHeight
-      });
-      URL.revokeObjectURL(objectUrl);
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Could not read that image."));
-    };
-
-    image.src = objectUrl;
+    if (file.type && file.type.startsWith("video/")) {
+      const video = document.createElement("video");
+      video.onloadedmetadata = () => {
+        resolve({
+          width: video.videoWidth,
+          height: video.videoHeight
+        });
+        URL.revokeObjectURL(objectUrl);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Could not read that video."));
+      };
+      video.src = objectUrl;
+    } else {
+      const image = new Image();
+      image.onload = () => {
+        resolve({
+          width: image.naturalWidth,
+          height: image.naturalHeight
+        });
+        URL.revokeObjectURL(objectUrl);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Could not read that image."));
+      };
+      image.src = objectUrl;
+    }
   });
 }
 
