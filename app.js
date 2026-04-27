@@ -717,7 +717,8 @@ async function handleUploadSubmit(event) {
           contentType: file.type || "image/jpeg",
           size: file.size,
           createdAt: serverTimestamp(),
-          createdAtMs
+          createdAtMs,
+          description: "",
         });
 
         successCount += 1;
@@ -819,15 +820,16 @@ async function syncShareDocument(forceFetch = false) {
     }));
   }
 
-  const sharedImages = images.map((image) => ({
-    id: image.id,
-    name: image.name || "Untitled image",
-    downloadURL: image.downloadURL,
-    width: image.width || null,
-    height: image.height || null,
-    createdAtMs: image.createdAtMs || Date.now()
-  }));
-
+const sharedImages = images.map((image) => ({
+  id: image.id,
+  name: image.name || "Untitled image",
+  downloadURL: image.downloadURL,
+  width: image.width || null,
+  height: image.height || null,
+  contentType: image.contentType || "image/jpeg", // ✅ ADD THIS
+  createdAtMs: image.createdAtMs || Date.now()
+}));
+  
   await setDoc(doc(state.db, "shared_globes", state.profile.shareId), {
     ownerUid: state.user.uid,
     ownerName: state.profile.displayName || state.user.displayName || "Orbfolio User",
@@ -858,7 +860,14 @@ function openPreview(image, allowDelete) {
   refs.previewTitle.textContent = image.name || "Untitled item";
   refs.previewMeta.textContent = formatPreviewMeta(image);
   refs.deleteImageBtn.hidden = !allowDelete;
+  const isSharedView = !allowDelete; // shared = no delete allowed
+
+if (isSharedView) {
+  refs.downloadBtn.style.display = "none"; // ❌ hide download
+} else {
+  refs.downloadBtn.style.display = "inline-flex";
   refs.downloadBtn.href = image.downloadURL.replace('/upload/', '/upload/fl_attachment/');
+}
 
   refs.previewModal.hidden = false;
 }
