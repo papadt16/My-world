@@ -10,7 +10,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -21,19 +20,18 @@ import {
   serverTimestamp,
   setDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-import {
-  deleteObject,
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytes
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-storage.js";
 
 const DEFAULT_CONFIG = {
   appName: "Orbfolio",
   firebase: {
     enabled: false,
     config: null
+  },
+  cloudinary: {
+    enabled: false,
+    cloudName: "",
+    uploadPreset: "",
+    folder: "orbfolio"
   },
   gallery: {
     maxImages: 96,
@@ -44,6 +42,7 @@ const DEFAULT_CONFIG = {
 const APP_CONFIG = mergeConfig(DEFAULT_CONFIG, window.GLOBE_GALLERY_CONFIG || {});
 const SHARE_PARAM = new URLSearchParams(window.location.search).get("share");
 const HAS_FIREBASE_CONFIG = isFirebaseConfigured(APP_CONFIG.firebase);
+const HAS_CLOUDINARY_CONFIG = isCloudinaryConfigured(APP_CONFIG.cloudinary);
 
 const refs = {};
 
@@ -51,7 +50,6 @@ const state = {
   authMode: "login",
   auth: null,
   db: null,
-  storage: null,
   user: null,
   profile: null,
   images: [],
@@ -195,7 +193,6 @@ function initFirebase() {
   const app = initializeApp(APP_CONFIG.firebase.config);
   state.auth = getAuth(app);
   state.db = getFirestore(app);
-  state.storage = getStorage(app);
 }
 
 async function handleAuthState(user) {
@@ -496,10 +493,11 @@ function updateStudio() {
   refs.welcomeHeading.textContent = `Hello, ${displayName}`;
   refs.imageCount.textContent = String(count);
   refs.shareStatus.textContent = shareEnabled ? "Live" : "Private";
-  refs.storageChip.textContent = HAS_FIREBASE_CONFIG ? "Firebase active" : "Firebase required";
+  refs.storageChip.textContent = HAS_CLOUDINARY_CONFIG ? "Cloudinary active" : "Cloudinary required";
   refs.shareCopy.textContent = shareEnabled
     ? "Public link stays updated whenever you add more images."
     : "Generate a public interactive link for friends.";
+  refs.addImageBtn.disabled = !HAS_CLOUDINARY_CONFIG;
 
   if (!count) {
     refs.welcomeCopy.textContent = "Add images and they will settle on a hidden sphere with open air between them.";
@@ -540,7 +538,7 @@ function renderThumbnailList() {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "thumbnail-item";
-    item.addEventListener("click", () => openPreview(image, true));
+    item.addEventListener("click", () => openPreview(image, false));
 
     const thumb = document.createElement("img");
     thumb.className = "thumbnail-image";
@@ -569,7 +567,7 @@ function ensureStudioViewer() {
 
   if (!state.viewer) {
     state.viewer = new GlobeViewer(refs.globeStage, {
-      onSelect: (image) => openPreview(image, true)
+      onSelect: (image) => openPreview(image, false)
     });
   } else {
     state.viewer.resize();
@@ -601,6 +599,11 @@ async function handleLogout() {
 function openUploadModal() {
   if (!state.user) {
     showToast("Sign in first so the upload knows which globe to target.", true);
+    return;
+  }
+
+  if (!HAS_CLOUDINARY_CONFIG) {
+    showToast("Add your Cloudinary cloud name and unsigned upload preset in firebase-config.js first.", true);
     return;
   }
 
@@ -676,22 +679,15 @@ async function handleUploadSubmit(event) {
         const imageId = createId();
         const metrics = await readImageMetrics(file);
         const fileLabel = cleanFileLabel(file.name);
-        const safeName = slugify(file.name) || "image";
         const createdAtMs = Date.now() + index;
-        const storagePath = `users/${state.user.uid}/gallery/${imageId}-${safeName}`;
-        const imageRef = ref(state.storage, storagePath);
-
-        await uploadBytes(imageRef, file, {
-          contentType: file.type || "image/jpeg"
-        });
-
-        const downloadURL = await getDownloadURL(imageRef);
+        const uploadResult = await uploadImageToCloudinary(file, state.user.uid, imageId);
 
         await setDoc(doc(state.db, "users", state.user.uid, "images", imageId), {
           id: imageId,
           name: fileLabel,
-          downloadURL,
-          storagePath,
+          downloadURL: uploadResult.secureUrl,
+          publicId: uploadResult.publicId,
+          assetFolder: uploadResult.folder || APP_CONFIG.cloudinary.folder || "",
           width: metrics.width,
           height: metrics.height,
           contentType: file.type || "image/jpeg",
@@ -839,41 +835,7 @@ async function handleDeleteCurrentImage() {
     return;
   }
 
-  const image = state.currentPreview;
-  const confirmed = window.confirm(`Delete "${image.name || "this image"}" from your globe?`);
-
-  if (!confirmed) {
-    return;
-  }
-
-  refs.deleteImageBtn.disabled = true;
-  refs.deleteImageBtn.textContent = "Deleting...";
-
-  try {
-    if (image.storagePath) {
-      try {
-        await deleteObject(ref(state.storage, image.storagePath));
-      } catch (error) {
-        if (!String(error?.code || "").includes("object-not-found")) {
-          throw error;
-        }
-      }
-    }
-
-    await deleteDoc(doc(state.db, "users", state.user.uid, "images", image.id));
-
-    if (state.profile?.shareEnabled) {
-      await syncShareDocument(true);
-    }
-
-    closePreviewModal();
-    showToast("Image removed from your globe.");
-  } catch (error) {
-    showToast(formatUploadError(error), true);
-  } finally {
-    refs.deleteImageBtn.disabled = false;
-    refs.deleteImageBtn.textContent = "Delete Image";
-  }
+  showToast("Image deletion is disabled in this no-backend Cloudinary version.", true);
 }
 
 function openStudioHome() {
@@ -1026,6 +988,37 @@ function readImageMetrics(file) {
   });
 }
 
+async function uploadImageToCloudinary(file, userId, imageId) {
+  if (!HAS_CLOUDINARY_CONFIG) {
+    throw new Error("Cloudinary is not configured yet.");
+  }
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(APP_CONFIG.cloudinary.cloudName)}/image/upload`;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", APP_CONFIG.cloudinary.uploadPreset);
+  formData.append("folder", `${APP_CONFIG.cloudinary.folder}/${userId}`);
+  formData.append("public_id", imageId);
+  formData.append("tags", "orbfolio,user-upload");
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: formData
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || "Cloudinary upload failed.");
+  }
+
+  return {
+    secureUrl: payload.secure_url,
+    publicId: payload.public_id,
+    folder: payload.folder || `${APP_CONFIG.cloudinary.folder}/${userId}`
+  };
+}
+
 function createId() {
   if (window.crypto?.randomUUID) {
     return window.crypto.randomUUID();
@@ -1041,6 +1034,10 @@ function mergeConfig(base, override) {
     firebase: {
       ...base.firebase,
       ...(override.firebase || {})
+    },
+    cloudinary: {
+      ...base.cloudinary,
+      ...(override.cloudinary || {})
     },
     gallery: {
       ...base.gallery,
@@ -1060,6 +1057,16 @@ function isFirebaseConfigured(firebase) {
     config.appId &&
     !String(config.apiKey).includes("REPLACE_ME") &&
     !String(config.projectId).includes("REPLACE_ME")
+  );
+}
+
+function isCloudinaryConfigured(cloudinary) {
+  return !!(
+    cloudinary?.enabled &&
+    cloudinary.cloudName &&
+    cloudinary.uploadPreset &&
+    !String(cloudinary.cloudName).includes("REPLACE_ME") &&
+    !String(cloudinary.uploadPreset).includes("REPLACE_ME")
   );
 }
 
