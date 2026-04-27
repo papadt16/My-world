@@ -468,7 +468,7 @@ async function openSharedGlobe(shareId) {
       const ownerName = state.sharedDoc.ownerName || "Shared Globe";
       const sharedImages = Array.isArray(state.sharedDoc.images) ? state.sharedDoc.images : [];
 
-      refs.sharedOwnerName.textContent = `${ownerName}'s globe`;
+      refs.sharedOwnerName.textContent = `${ownerName}'s World`;
       refs.sharedCaption.textContent = sharedImages.length
         ? `${sharedImages.length} images floating on an invisible sphere.`
         : "This globe is shared, but no images have been added yet.";
@@ -511,7 +511,6 @@ function updateStudio() {
     refs.sceneTitle.textContent = count === 1
       ? "One image already suspended on the sphere."
       : `${count} images wrapped around your invisible sphere.`;
-    refs.sceneCaption.textContent = "Blank space stays open on purpose, so the far side of the globe can breathe through the gaps.";
     refs.emptyState.hidden = true;
   }
 
