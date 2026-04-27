@@ -1,0 +1,55 @@
+<svg width="256" height="256" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E2234"/>
+      <stop offset="1" stop-color="#06121F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 28) rotate(90) scale(24)">
+      <stop stop-color="#7FD1C5" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#7FD1C5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cardA" x1="16" y1="12" x2="52" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0D6B2"/>
+      <stop offset="1" stop-color="#7FD1C5"/>
+    </linearGradient>
+    <linearGradient id="cardB" x1="12" y1="16" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D8B98D"/>
+      <stop offset="1" stop-color="#84B8DA"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#bg)"/>
+  <rect x="4" y="4" width="56" height="56" rx="18" stroke="#FFFFFF" stroke-opacity="0.18"/>
+  <circle cx="32" cy="32" r="19" fill="url(#glow)"/>
+
+  <g opacity="0.92">
+    <path d="M48.5 26.2C48.5 35.9 40.7 43.7 31 43.7C23.1 43.7 16.5 38.5 14.3 31.3" stroke="#D8B98D" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M16.8 23.4C20.2 17 26.9 12.8 34.6 12.8C39.4 12.8 43.8 14.5 47.1 17.5" stroke="#9DDECF" stroke-width="2" stroke-linecap="round" stroke-opacity="0.88"/>
+    <path d="M18.2 46.5C22.1 49.6 27 51.4 32.3 51.4C37.8 51.4 42.9 49.4 46.8 46" stroke="#8ABDDD" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.75"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <g transform="translate(12 16) rotate(-18 8 8)">
+      <rect x="0.8" y="0.8" width="16.4" height="16.4" rx="4.4" fill="#EAF3F8" fill-opacity="0.14" stroke="white" stroke-opacity="0.28" stroke-width="1.6"/>
+      <rect x="2.6" y="2.6" width="12.8" height="12.8" rx="3.2" fill="url(#cardA)"/>
+      <path d="M3.8 12.6L7.3 9.1L10 11.8L12.2 8.9L14.2 12.6V14.2H3.8V12.6Z" fill="#0B1826" fill-opacity="0.28"/>
+    </g>
+
+    <g transform="translate(38 14) rotate(22 6.5 6.5)">
+      <rect x="0.8" y="0.8" width="13.4" height="13.4" rx="3.8" fill="#EAF3F8" fill-opacity="0.16" stroke="white" stroke-opacity="0.28" stroke-width="1.4"/>
+      <rect x="2.4" y="2.4" width="10.2" height="10.2" rx="2.8" fill="url(#cardB)"/>
+      <circle cx="5.1" cy="5.3" r="1.2" fill="#F4EFE7" fill-opacity="0.78"/>
+    </g>
+
+    <g transform="translate(34 37) rotate(-10 5.5 5.5)">
+      <rect x="0.7" y="0.7" width="11.6" height="11.6" rx="3.4" fill="#EAF3F8" fill-opacity="0.15" stroke="white" stroke-opacity="0.26" stroke-width="1.4"/>
+      <rect x="2.1" y="2.1" width="8.8" height="8.8" rx="2.3" fill="url(#cardA)"/>
+    </g>
+  </g>
+
+  <circle cx="49.5" cy="25.5" r="1.6" fill="#F4EFE7"/>
+  <circle cx="14.2" cy="31.4" r="1.5" fill="#7FD1C5"/>
+</svg>
