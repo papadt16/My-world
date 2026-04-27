@@ -211,7 +211,12 @@
         <label class="upload-dropzone" for="image-input">
           <span class="upload-title">Choose image files</span>
           <span class="upload-subtitle">PNG, JPG, WEBP, AVIF and GIF are all fine.</span>
-          <input id="image-input" type="file" accept="image/*" multiple hidden>
+          <input id="image-input" type="file" accept="image/*,video/*" multiple hidden>
+          <span class="upload-subtitle">PNG, JPG, WEBP, AVIF, GIF, and MP4 are all fine.</span>
+          <div class="preview-image-wrap">
+          <img id="preview-image" alt="">
+          <video id="preview-video" controls autoplay hidden style="max-height: min(68vh, 560px); max-width: 100%; border-radius: 22px;"></video>
+          </div>
         </label>
 
         <div id="upload-selection" class="upload-selection">No files selected yet.</div>
