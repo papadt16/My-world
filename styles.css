@@ -875,6 +875,45 @@ button {
   color: #ffd8d2;
 }
 
+/* Add near the bottom of your CSS file, before media queries */
+.viewer-frame.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border-radius: 0;
+  background: var(--bg-0);
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 1140px) {
+  .mobile-only { display: inline-flex; }
+  
+  /* Make the sidebar a sliding drawer on mobile */
+  .dashboard-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 85vw;
+    max-width: 400px;
+    background: rgba(6, 18, 31, 0.95);
+    backdrop-filter: blur(20px);
+    z-index: 110;
+    overflow-y: auto;
+    padding: 24px;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .dashboard-panel.is-open {
+    transform: translateX(0);
+  }
+}
+
 @media (max-width: 1140px) {
   .auth-stage,
   .dashboard-main {
