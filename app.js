@@ -147,6 +147,7 @@ function cacheDom() {
   refs.previewModal = document.getElementById("preview-modal");
   refs.closePreviewModalBtn = document.getElementById("close-preview-modal-btn");
   refs.previewImage = document.getElementById("preview-image");
+  refs.previewVideo = document.getElementById("preview-video");
   refs.previewTitle = document.getElementById("preview-title");
   refs.previewMeta = document.getElementById("preview-meta");
   refs.deleteImageBtn = document.getElementById("delete-image-btn");
@@ -1145,6 +1146,8 @@ class GlobeViewer {
     this.disposed = false;
     this.pointer = new THREE.Vector2(2, 2);
     this.raycaster = new THREE.Raycaster();
+    this.initialPinchDistance = 0;
+    this.initialCameraZ = 0;
     this.rotation = {
       x: -0.18,
       y: 0.52,
@@ -1190,11 +1193,19 @@ class GlobeViewer {
     this.handleWheel = this.handleWheel.bind(this);
     this.resize = this.resize.bind(this);
     this.animate = this.animate.bind(this);
+    this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleTouchMove = this.handleTouchMove.bind(this);
 
     this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.addEventListener("pointermove", this.handlePointerMove);
     this.renderer.domElement.addEventListener("pointerleave", this.handlePointerLeave);
     this.renderer.domElement.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
+    this.renderer.domElement.addEventListener("pointermove", this.handlePointerMove);
+    this.renderer.domElement.addEventListener("pointerleave", this.handlePointerLeave);
+    this.renderer.domElement.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.renderer.domElement.addEventListener("touchstart", this.handleTouchStart, { passive: false });
+    this.renderer.domElement.addEventListener("touchmove", this.handleTouchMove, { passive: false });
     window.addEventListener("pointerup", this.handlePointerUp);
     window.addEventListener("resize", this.resize);
 
@@ -1385,6 +1396,36 @@ handleWheel(event) {
   // The max zoom out (28.0) accounts for a full 300-image expanded sphere
   this.camera.position.z = clamp(this.camera.position.z, 6.0, 28.0);
 }
+
+  handleTouchStart(event) {
+    // If exactly two fingers are touching the screen
+    if (event.touches.length === 2) {
+      this.drag.active = false; // Stop the globe from rotating while zooming
+      
+      const dx = event.touches[0].clientX - event.touches[1].clientX;
+      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      
+      // Calculate the initial distance between the two fingers
+      this.initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+      this.initialCameraZ = this.camera.position.z;
+    }
+  }
+
+  handleTouchMove(event) {
+    if (event.touches.length === 2) {
+      event.preventDefault(); // Stop the entire browser page from zooming
+      
+      const dx = event.touches[0].clientX - event.touches[1].clientX;
+      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+      if (this.initialPinchDistance > 0) {
+        // Ratio > 1 means pinching in (zoom out). Ratio < 1 means pulling apart (zoom in).
+        const pinchRatio = this.initialPinchDistance / currentDistance;
+        this.camera.position.z = clamp(this.initialCameraZ * pinchRatio, 6.0, 28.0);
+      }
+    }
+  }
 
   updatePointer(event) {
     const bounds = this.renderer.domElement.getBoundingClientRect();
