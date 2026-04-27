@@ -500,9 +500,8 @@ function updateStudio() {
   refs.addImageBtn.disabled = !HAS_CLOUDINARY_CONFIG;
 
   if (!count) {
-    refs.welcomeCopy.textContent = "Add images and they will settle on a hidden sphere with open air between them.";
+    refs.welcomeCopy.textContent = "Add images and they will settle on a hidden sphere.";
     refs.sceneTitle.textContent = "Floating memories on an invisible orbit.";
-    refs.sceneCaption.textContent = "The sphere itself stays hidden, so empty space remains transparent and you can still see depth through the globe.";
     refs.emptyState.hidden = false;
   } else {
     refs.welcomeCopy.textContent = count === 1
