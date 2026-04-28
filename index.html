@@ -118,7 +118,7 @@
           <h2 id="welcome-heading">Hello there</h2>
           <p id="welcome-copy" class="panel-copy">Add images and they will settle on a hidden sphere with open air between them.</p>
 
-          <div class="metric-strip">
+            <div class="metric-strip">
             <article class="metric-card">
               <span>Images</span>
               <strong id="image-count">0</strong>
@@ -126,6 +126,10 @@
             <article class="metric-card">
               <span>Share status</span>
               <strong id="share-status">Private</strong>
+            </article>
+            <article class="metric-card">
+              <span>Total Likes</span>
+              <strong id="total-likes">0</strong>
             </article>
           </div>
         </section>
@@ -244,17 +248,30 @@
           <img id="preview-image" alt="">
           <video id="preview-video" controls autoplay hidden style="max-height: min(68vh, 560px); max-width: 100%; border-radius: 22px;"></video>
         </div>
-         <div class="preview-copy">
-            <p class="eyebrow">Selected Image</p>
+        <div class="preview-copy" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+          <div>
+            <p class="eyebrow" id="preview-eyebrow">Selected Image</p>
             <h2 id="preview-title">Untitled image</h2>
-           <p id="preview-meta" class="panel-copy">Added recently</p>
-           <textarea id="image-description" placeholder="Add description..." style="width:100%; margin-top:10px; border-radius:10px; padding:10px;"></textarea>
-           <button id="save-description-btn" class="pill-button" style="margin-top:10px;" hidden>
-            Save Description
-           </button>
-           <div style="display: flex; gap: 12px; margin-top: 18px;">
-             <a id="download-btn" class="pill-button pill-secondary" download>Download</a>
-             <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete</button>
+            
+            <textarea id="image-description" placeholder="Add description..." style="width:100%; margin-top:10px; border-radius:10px; padding:10px; min-height: 100px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);" disabled></textarea>
+            
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button id="edit-description-btn" class="pill-button pill-secondary" hidden>Edit Description</button>
+              <button id="save-description-btn" class="pill-button" hidden>Save</button>
+            </div>
+
+            <p id="visitor-description" class="panel-copy" style="font-size: 1.1rem; margin-top: 10px;" hidden></p>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 18px; justify-content: space-between; align-items: flex-end;">
+            <div style="display: flex; gap: 12px;">
+              <a id="download-btn" class="pill-button pill-secondary" download>Download</a>
+              <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete</button>
+            </div>
+            
+            <button id="like-btn" class="pill-button" style="background: var(--rose); color: #000;" hidden>
+              ❤️ Like (<span id="like-count">0</span>)
+            </button>
           </div>
         </div>
       </div>
