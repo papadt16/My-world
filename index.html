@@ -277,6 +277,20 @@
     </div>
   </div>
 
+<div id="auth-prompt-modal" class="modal-shell" hidden>
+    <div class="modal-backdrop" data-close="auth-prompt"></div>
+
+    <div class="modal-card" style="max-width: 420px; text-align: center; padding: 42px 28px;">
+      <button id="close-auth-prompt-btn" class="modal-close" type="button" aria-label="Close">Close</button>
+      
+      <p class="eyebrow" style="margin-bottom: 8px;">Orbfolio Account</p>
+      <h2 style="margin-bottom: 16px;">Sign in to drop a like</h2>
+      <p class="panel-copy">You need to create an account or log in before you can leave likes on shared memories.</p>
+      
+      <button id="go-to-auth-btn" class="action-button" style="width: 100%; margin-top: 24px;">Sign Up / Log In</button>
+    </div>
+  </div>
+  
   <div id="toast" class="toast" hidden></div>
 
   <script type="module" src="./app.js"></script>
