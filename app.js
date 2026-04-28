@@ -73,29 +73,21 @@ document.addEventListener("DOMContentLoaded", boot);
 async function boot() {
   cacheDom();
   bindUI();
-  renderAuthMode();
 
-  if (SHARE_PARAM) {
-    document.body.classList.add("share-mode");
-  }
+  // 1. Hide everything initially so we don't get a flash of the login screen on refresh
+  refs.authScreen.hidden = true;
+  refs.appShell.hidden = true;
+  refs.shareShell.hidden = true;
 
   if (!HAS_FIREBASE_CONFIG) {
     renderMissingConfig();
-
-    if (SHARE_PARAM) {
-      showShareUnavailable();
-    }
-
+    if (SHARE_PARAM) showShareUnavailable();
     return;
   }
 
   initFirebase();
 
-  if (SHARE_PARAM) {
-    await openSharedGlobe(SHARE_PARAM);
-    return;
-  }
-
+  // 2. Let Firebase figure out the user state first, THEN route them!
   onAuthStateChanged(state.auth, async (user) => {
     await handleAuthState(user);
   });
@@ -160,6 +152,7 @@ function cacheDom() {
   refs.viewerFrame = document.querySelector(".viewer-frame");
   refs.imageDescription = document.getElementById("image-description");
   refs.saveDescriptionBtn = document.getElementById("save-description-btn");
+  refs.togglePasswordBtn = document.getElementById("toggle-password-btn");
 
   refs.totalLikes = document.getElementById("total-likes");
   refs.editDescriptionBtn = document.getElementById("edit-description-btn");
@@ -167,6 +160,8 @@ function cacheDom() {
   refs.likeBtn = document.getElementById("like-btn");
   refs.likeCount = document.getElementById("like-count");
   refs.previewEyebrow = document.getElementById("preview-eyebrow");
+  refs.sidebarBackdrop = document.getElementById("sidebar-backdrop");
+  refs.closeSidebarBtn = document.getElementById("close-sidebar-btn");
   
   refs.toast = document.getElementById("toast");
   refs.authPromptModal = document.getElementById("auth-prompt-modal");
@@ -193,6 +188,12 @@ function bindUI() {
   refs.deleteImageBtn.addEventListener("click", handleDeleteCurrentImage);
   refs.saveDescriptionBtn.addEventListener("click", saveImageDescription);
   
+  refs.togglePasswordBtn.addEventListener("click", () => {
+    const isPassword = refs.passwordInput.type === "password";
+    refs.passwordInput.type = isPassword ? "text" : "password";
+    refs.togglePasswordBtn.style.opacity = isPassword ? "0.5" : "1"; // Visual feedback
+  });
+  
   // Auto-resize the description textarea as the user types
   refs.imageDescription.addEventListener("input", function() {
     this.style.height = "auto";
@@ -208,12 +209,20 @@ function bindUI() {
     window.location.href = window.location.href.split("?")[0];
   });
   
+  refs.goToAuthBtn.addEventListener("click", () => {
+    refs.authPromptModal.hidden = true;
+    showAuth(); // Shows login without dropping the share link URL!
+  });
+  
   // Mobile Action Buttons
-  if (refs.toggleSidebarBtn) {
-    refs.toggleSidebarBtn.addEventListener("click", () => {
-      refs.dashboardPanel.classList.toggle("is-open");
-    });
-  }
+const toggleMenu = () => {
+    const isOpen = refs.dashboardPanel.classList.toggle("is-open");
+    refs.sidebarBackdrop.hidden = !isOpen;
+  };
+
+  if (refs.toggleSidebarBtn) refs.toggleSidebarBtn.addEventListener("click", toggleMenu);
+  if (refs.closeSidebarBtn) refs.closeSidebarBtn.addEventListener("click", toggleMenu);
+  if (refs.sidebarBackdrop) refs.sidebarBackdrop.addEventListener("click", toggleMenu);
 
   if (refs.expandGlobeBtn) {
     refs.expandGlobeBtn.addEventListener("click", () => {
@@ -260,24 +269,36 @@ async function handleAuthState(user) {
   clearUserSubscriptions();
   state.user = user || null;
 
-  if (!user) {
-    state.profile = null;
-    state.images = [];
-    if (state.viewer) {
-      state.viewer.setImages([]);
-    }
-    updateStudio();
-
-    if (!SHARE_PARAM) {
-      showAuth();
-    }
-
-    return;
+  // 3. 14-Hour Session Timeout Logic
+  const loginTime = localStorage.getItem("orbfolio_login_time");
+  const fourteenHours = 14 * 60 * 60 * 1000;
+  if (user && loginTime && (Date.now() - parseInt(loginTime)) > fourteenHours) {
+    await handleLogout();
+    return; // Stops here, auth state will trigger again as null
   }
 
-  await ensureUserProfile(user);
-  subscribeToUserData(user.uid);
-  showStudio();
+  // 4. Set up user data if logged in
+  if (user) {
+    await ensureUserProfile(user);
+    subscribeToUserData(user.uid);
+  } else {
+    state.profile = null;
+    state.images = [];
+    if (state.viewer) state.viewer.setImages([]);
+    updateStudio();
+  }
+
+  // 5. THE MASTER ROUTER
+  if (SHARE_PARAM) {
+    // If they have a share link, ALWAYS show the shared globe, whether logged in or not
+    openSharedGlobe(SHARE_PARAM);
+  } else if (user) {
+    // Logged in, no share link -> Studio
+    showStudio();
+  } else {
+    // Logged out, no share link -> Login
+    showAuth();
+  }
 }
 
 function clearUserSubscriptions() {
@@ -433,8 +454,9 @@ async function handleAuthSubmit(event) {
         updatedAt: serverTimestamp()
       }, { merge: true });
     }
-
+    
     refs.authForm.reset();
+    localStorage.setItem("orbfolio_login_time", Date.now().toString());
   } catch (error) {
     showAuthError(formatFirebaseError(error));
   } finally {
