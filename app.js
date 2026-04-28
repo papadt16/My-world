@@ -169,6 +169,9 @@ function cacheDom() {
   refs.previewEyebrow = document.getElementById("preview-eyebrow");
   
   refs.toast = document.getElementById("toast");
+  refs.authPromptModal = document.getElementById("auth-prompt-modal");
+  refs.closeAuthPromptBtn = document.getElementById("close-auth-prompt-btn");
+  refs.goToAuthBtn = document.getElementById("go-to-auth-btn");
 }
 
 function bindUI() {
@@ -195,6 +198,16 @@ function bindUI() {
     this.style.height = "auto";
     this.style.height = (this.scrollHeight) + "px";
   });
+
+  refs.closeAuthPromptBtn.addEventListener("click", () => { 
+    refs.authPromptModal.hidden = true; 
+  });
+  
+  refs.goToAuthBtn.addEventListener("click", () => {
+    // Drops the share link and reloads the page so they see the login screen
+    window.location.href = window.location.href.split("?")[0];
+  });
+  
   // Mobile Action Buttons
   if (refs.toggleSidebarBtn) {
     refs.toggleSidebarBtn.addEventListener("click", () => {
@@ -222,6 +235,8 @@ function bindUI() {
         closeUploadModal();
       } else if (closeType === "preview") {
         closePreviewModal();
+      } else if (closeType === "auth-prompt") {
+        refs.authPromptModal.hidden = true; // <-- Add this!
       }
     });
   });
@@ -1202,29 +1217,35 @@ async function saveImageDescription() {
 async function handleLikeClick() {
   if (!state.currentPreview || !state.sharedDoc) return;
 
+  // 1. THE GATEKEEPER: Check if they have an account
+  if (!state.user) {
+    refs.authPromptModal.hidden = false;
+    return;
+  }
+
+  // Disable button immediately so they can't double-click
   refs.likeBtn.disabled = true;
   
-  // We need to update the owner's original document
   const ownerUid = state.sharedDoc.ownerUid;
   const imageId = state.currentPreview.id;
 
   try {
-    // Increment the likes securely in Firestore
     await updateDoc(doc(state.db, "users", ownerUid, "images", imageId), {
       likes: increment(1)
     });
     
-    // Optimistically update the UI so it feels instant for the visitor
     const newLikes = (state.currentPreview.likes || 0) + 1;
     state.currentPreview.likes = newLikes;
-    refs.likeCount.textContent = newLikes;
+    
+    // 2. VISUAL LOCK: Change text and keep button disabled for the session
+    refs.likeBtn.innerHTML = `❤️ Liked! (${newLikes})`;
+    refs.likeBtn.style.opacity = "0.6";
     
     showToast("Liked! ❤️");
   } catch (error) {
     console.error(error);
     showToast("Could not drop a like right now.", true);
-  } finally {
-    refs.likeBtn.disabled = false;
+    refs.likeBtn.disabled = false; // Only re-enable if it failed
   }
 }
 
