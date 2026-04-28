@@ -22,6 +22,11 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+import {
+  collection, doc, getDoc, getDocs, getFirestore, onSnapshot,
+  orderBy, query, serverTimestamp, setDoc, deleteDoc, updateDoc, increment
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
 const DEFAULT_CONFIG = {
   appName: "Orbfolio",
   firebase: {
@@ -158,6 +163,13 @@ function cacheDom() {
   refs.viewerFrame = document.querySelector(".viewer-frame");
   refs.imageDescription = document.getElementById("image-description");
   refs.saveDescriptionBtn = document.getElementById("save-description-btn");
+
+  refs.totalLikes = document.getElementById("total-likes");
+  refs.editDescriptionBtn = document.getElementById("edit-description-btn");
+  refs.visitorDescription = document.getElementById("visitor-description");
+  refs.likeBtn = document.getElementById("like-btn");
+  refs.likeCount = document.getElementById("like-count");
+  refs.previewEyebrow = document.getElementById("preview-eyebrow");
   
   refs.toast = document.getElementById("toast");
 }
@@ -174,6 +186,9 @@ function bindUI() {
   refs.uploadForm.addEventListener("submit", handleUploadSubmit);
   refs.imageInput.addEventListener("change", updateUploadSelection);
 
+  refs.editDescriptionBtn.addEventListener("click", enableDescriptionEdit);
+  refs.likeBtn.addEventListener("click", handleLikeClick);
+  
   refs.closePreviewModalBtn.addEventListener("click", closePreviewModal);
   refs.deleteImageBtn.addEventListener("click", handleDeleteCurrentImage);
   refs.saveDescriptionBtn.addEventListener("click", saveImageDescription);
@@ -521,6 +536,10 @@ function updateStudio() {
 
   refs.welcomeHeading.textContent = `Hello, ${displayName}`;
   refs.imageCount.textContent = String(count);
+  
+  const totalLikesCount = state.images.reduce((sum, img) => sum + (img.likes || 0), 0);
+  if (refs.totalLikes) refs.totalLikes.textContent = String(totalLikesCount);
+  
   refs.shareStatus.textContent = shareEnabled ? "Live" : "Private";
   refs.storageChip.textContent = HAS_CLOUDINARY_CONFIG ? "Cloudinary active" : "Cloudinary required";
   refs.shareCopy.textContent = shareEnabled
@@ -831,7 +850,8 @@ const sharedImages = images.map((image) => ({
   height: image.height || null,
   contentType: image.contentType || "image/jpeg", 
   createdAtMs: image.createdAtMs || Date.now(),
-  description: image.description || "", 
+  description: image.description || "",
+  likes: image.likes || 0 
 }));
   
   await setDoc(doc(state.db, "shared_globes", state.profile.shareId), {
@@ -848,6 +868,7 @@ function openPreview(image, allowDelete) {
   state.currentPreview = image;
   const isVideo = image.contentType && image.contentType.startsWith("video/");
 
+  // 1. Handle Media Display
   if (isVideo) {
     refs.previewImage.hidden = true;
     refs.previewVideo.hidden = false;
@@ -856,40 +877,67 @@ function openPreview(image, allowDelete) {
     refs.previewImage.hidden = false;
     refs.previewVideo.hidden = true;
     refs.previewImage.src = image.downloadURL;
-    // Pause video if playing
     refs.previewVideo.pause();
     refs.previewVideo.src = "";
   }
 
+  // 2. Setup Base Info
   refs.previewTitle.textContent = image.name || "Untitled item";
-if (image.description) {
-  refs.previewMeta.textContent = image.description;
-} else {
-  refs.previewMeta.textContent = formatPreviewMeta(image);
-}
-  refs.previewMeta.textContent = formatPreviewMeta(image);
-  refs.deleteImageBtn.hidden = !allowDelete;
-  const isSharedView = !allowDelete; // shared = no delete allowed
+  refs.likeCount.textContent = image.likes || 0;
+  
+  const isOwner = allowDelete;
 
-if (isSharedView) {
-  refs.downloadBtn.style.display = "none"; // ❌ hide download
-} else {
-  refs.downloadBtn.style.display = "inline-flex";
-  refs.downloadBtn.href = image.downloadURL.replace('/upload/', '/upload/fl_attachment/');
-}
+  if (isOwner) {
+    // --- OWNER VIEW ---
+    refs.previewEyebrow.hidden = false;
+    refs.previewTitle.hidden = false;
+    
+    // Description UI
+    refs.visitorDescription.hidden = true;
+    refs.imageDescription.hidden = false;
+    refs.imageDescription.value = image.description || "";
+    refs.imageDescription.disabled = true; // Disabled until they click 'Edit'
+    
+    // Buttons
+    refs.editDescriptionBtn.hidden = false;
+    refs.saveDescriptionBtn.hidden = true;
+    refs.likeBtn.hidden = true; // Owners don't like their own images
+    refs.deleteImageBtn.hidden = false;
+    
+    refs.downloadBtn.style.display = "inline-flex";
+    refs.downloadBtn.href = image.downloadURL.replace('/upload/', '/upload/fl_attachment/');
+  } else {
+    // --- VISITOR VIEW (Shared Link) ---
+    refs.imageDescription.hidden = true;
+    refs.editDescriptionBtn.hidden = true;
+    refs.saveDescriptionBtn.hidden = true;
+    refs.deleteImageBtn.hidden = true;
+    refs.downloadBtn.style.display = "none";
+    
+    if (image.description && image.description.trim() !== "") {
+      // Show description and titles
+      refs.visitorDescription.hidden = false;
+      refs.visitorDescription.textContent = image.description;
+      refs.previewEyebrow.hidden = false;
+      refs.previewTitle.hidden = false;
+    } else {
+      // MINIMAL VIEW: Hide absolutely everything except the image and like button
+      refs.visitorDescription.hidden = true;
+      refs.previewEyebrow.hidden = true;
+      refs.previewTitle.hidden = true;
+    }
+    
+    refs.likeBtn.hidden = false;
+  }
 
   refs.previewModal.hidden = false;
-  refs.imageDescription.value = image.description || "";
-
-if (allowDelete) {
-  // Owner view
-  refs.imageDescription.disabled = false;
-  refs.saveDescriptionBtn.hidden = false;
-} else {
-  // Shared view
-  refs.imageDescription.disabled = true;
-  refs.saveDescriptionBtn.hidden = true;
 }
+
+function enableDescriptionEdit() {
+  refs.imageDescription.disabled = false;
+  refs.imageDescription.focus();
+  refs.editDescriptionBtn.hidden = true;
+  refs.saveDescriptionBtn.hidden = false;
 }
 
 function closePreviewModal() {
@@ -1121,19 +1169,54 @@ async function saveImageDescription() {
   if (!state.user || !state.currentPreview) return;
 
   try {
-    const newDesc = refs.imageDescription.value;
+    refs.saveDescriptionBtn.disabled = true;
+    refs.saveDescriptionBtn.textContent = "Saving...";
+    const newDesc = refs.imageDescription.value.trim();
 
-    await setDoc(
+    await updateDoc(
       doc(state.db, "users", state.user.uid, "images", state.currentPreview.id),
-      {
-        description: newDesc
-      },
-      { merge: true }
+      { description: newDesc }
     );
 
-    showToast("Description updated.");
+    // Update UI state to show visual feedback that it saved
+    refs.imageDescription.disabled = true;
+    refs.saveDescriptionBtn.hidden = true;
+    refs.editDescriptionBtn.hidden = false;
+    showToast("Description saved! ✓");
   } catch (error) {
     showToast("Failed to save description", true);
+  } finally {
+    refs.saveDescriptionBtn.disabled = false;
+    refs.saveDescriptionBtn.textContent = "Save";
+  }
+}
+
+async function handleLikeClick() {
+  if (!state.currentPreview || !state.sharedDoc) return;
+
+  refs.likeBtn.disabled = true;
+  
+  // We need to update the owner's original document
+  const ownerUid = state.sharedDoc.ownerUid;
+  const imageId = state.currentPreview.id;
+
+  try {
+    // Increment the likes securely in Firestore
+    await updateDoc(doc(state.db, "users", ownerUid, "images", imageId), {
+      likes: increment(1)
+    });
+    
+    // Optimistically update the UI so it feels instant for the visitor
+    const newLikes = (state.currentPreview.likes || 0) + 1;
+    state.currentPreview.likes = newLikes;
+    refs.likeCount.textContent = newLikes;
+    
+    showToast("Liked! ❤️");
+  } catch (error) {
+    console.error(error);
+    showToast("Could not drop a like right now.", true);
+  } finally {
+    refs.likeBtn.disabled = false;
   }
 }
 
