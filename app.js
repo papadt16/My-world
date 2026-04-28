@@ -190,6 +190,11 @@ function bindUI() {
   refs.deleteImageBtn.addEventListener("click", handleDeleteCurrentImage);
   refs.saveDescriptionBtn.addEventListener("click", saveImageDescription);
   
+  // Auto-resize the description textarea as the user types
+  refs.imageDescription.addEventListener("input", function() {
+    this.style.height = "auto";
+    this.style.height = (this.scrollHeight) + "px";
+  });
   // Mobile Action Buttons
   if (refs.toggleSidebarBtn) {
     refs.toggleSidebarBtn.addEventListener("click", () => {
@@ -884,7 +889,7 @@ function openPreview(image, allowDelete) {
   
   const isOwner = allowDelete;
 
-  if (isOwner) {
+if (isOwner) {
     // --- OWNER VIEW ---
     refs.previewEyebrow.hidden = false;
     refs.previewTitle.hidden = false;
@@ -894,6 +899,12 @@ function openPreview(image, allowDelete) {
     refs.imageDescription.hidden = false;
     refs.imageDescription.value = image.description || "";
     refs.imageDescription.disabled = true; // Disabled until they click 'Edit'
+    
+    // Force the textarea to auto-size to fit existing text
+    setTimeout(() => {
+      refs.imageDescription.style.height = "auto";
+      refs.imageDescription.style.height = (refs.imageDescription.scrollHeight) + "px";
+    }, 10);
     
     // Buttons
     refs.editDescriptionBtn.hidden = false;
@@ -911,17 +922,17 @@ function openPreview(image, allowDelete) {
     refs.deleteImageBtn.hidden = true;
     refs.downloadBtn.style.display = "none";
     
+    // WE NOW ALWAYS HIDE THE EYEBROW AND TITLE FOR VISITORS
+    refs.previewEyebrow.hidden = true;
+    refs.previewTitle.hidden = true;
+    
     if (image.description && image.description.trim() !== "") {
-      // Show description and titles
+      // Show just the description
       refs.visitorDescription.hidden = false;
       refs.visitorDescription.textContent = image.description;
-      refs.previewEyebrow.hidden = false;
-      refs.previewTitle.hidden = false;
     } else {
-      // MINIMAL VIEW: Hide absolutely everything except the image and like button
+      // MINIMAL VIEW: No description, no title, just the image and like button
       refs.visitorDescription.hidden = true;
-      refs.previewEyebrow.hidden = true;
-      refs.previewTitle.hidden = true;
     }
     
     refs.likeBtn.hidden = false;
@@ -1603,7 +1614,7 @@ handleWheel(event) {
     this.updateHoverState();
 
     if (!this.drag.active) {
-      this.rotation.targetY += 0.0014;
+      this.rotation.targetY += 0.0007;
     }
 
     this.rotation.x += (this.rotation.targetX - this.rotation.x) * 0.08;
