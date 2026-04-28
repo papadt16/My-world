@@ -72,12 +72,13 @@
             <input id="email-input" type="email" autocomplete="email" placeholder="you@example.com" required>
           </div>
 
-          <div class="field-group" style="position: relative;">
+         <div class="field-group" style="position: relative;">
             <label for="password-input">Password</label>
             <input id="password-input" type="password" autocomplete="current-password" placeholder="At least 6 characters" required style="padding-right: 40px;">
-            <button type="button" id="toggle-password-btn" style="position: absolute; right: 12px; top: 38px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--muted); padding: 0;">👁️</button>
+            <button type="button" id="toggle-password-btn" style="position: absolute; right: 12px; top: 38px; background: none; border: none; cursor: pointer; padding: 0;">
+              <img id="password-icon" src="./Screenshot 2026-04-28 194659.png" alt="Toggle" style="width: 22px; height: 22px; opacity: 0.7;">
+            </button>
           </div>
-
           <div id="auth-error" class="form-feedback error" hidden></div>
 
           <button id="auth-submit-btn" class="action-button" type="submit">Log In</button>
