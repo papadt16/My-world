@@ -267,11 +267,6 @@ function bindUI() {
   });
   
   refs.goToAuthBtn.addEventListener("click", () => {
-    // Drops the share link and reloads the page so they see the login screen
-    window.location.href = window.location.href.split("?")[0];
-  });
-  
-  refs.goToAuthBtn.addEventListener("click", () => {
     refs.authPromptModal.hidden = true;
     showAuth(); // Shows login without dropping the share link URL!
   });
@@ -1504,10 +1499,6 @@ class GlobeViewer {
     this.handleTouchStart = this.handleTouchStart.bind(this);
     this.handleTouchMove = this.handleTouchMove.bind(this);
 
-    this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
-    this.renderer.domElement.addEventListener("pointermove", this.handlePointerMove);
-    this.renderer.domElement.addEventListener("pointerleave", this.handlePointerLeave);
-    this.renderer.domElement.addEventListener("wheel", this.handleWheel, { passive: false });
     this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.addEventListener("pointermove", this.handlePointerMove);
     this.renderer.domElement.addEventListener("pointerleave", this.handlePointerLeave);
