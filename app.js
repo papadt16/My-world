@@ -21,7 +21,9 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
-  increment
+  increment,
+  arrayUnion, 
+  arrayRemove
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
@@ -576,7 +578,10 @@ function updateStudio() {
   refs.welcomeHeading.textContent = `Hello, ${displayName}`;
   refs.imageCount.textContent = String(count);
   
-  const totalLikesCount = state.images.reduce((sum, img) => sum + (img.likes || 0), 0);
+  const totalLikesCount = state.images.reduce((sum, img) => {
+    const likes = img.likedBy ? img.likedBy.length : (img.likes || 0);
+    return sum + likes;
+  }, 0);
   if (refs.totalLikes) refs.totalLikes.textContent = String(totalLikesCount);
   
   refs.shareStatus.textContent = shareEnabled ? "Live" : "Private";
@@ -890,7 +895,8 @@ const sharedImages = images.map((image) => ({
   contentType: image.contentType || "image/jpeg", 
   createdAtMs: image.createdAtMs || Date.now(),
   description: image.description || "",
-  likes: image.likes || 0 
+  likes: image.likes || 0,
+  likedBy: image.likedBy || []
 }));
   
   await setDoc(doc(state.db, "shared_globes", state.profile.shareId), {
@@ -973,6 +979,28 @@ if (isOwner) {
     }
     
     refs.likeBtn.hidden = false;
+    refs.likeBtn.disabled = false;
+    
+    // Check if current user is in the likedBy array
+    const currentLikedBy = image.likedBy || [];
+    const hasLiked = state.user && currentLikedBy.includes(state.user.uid);
+    const likesCount = currentLikedBy.length || image.likes || 0;
+    
+    refs.likeBtn.innerHTML = `❤️ Likes ${likesCount}`;
+
+    if (hasLiked) {
+      // Lit Up State (User already liked it)
+      refs.likeBtn.style.background = "var(--rose)";
+      refs.likeBtn.style.color = "#000";
+      refs.likeBtn.style.opacity = "1";
+      refs.likeBtn.style.filter = "none";
+    } else {
+      // Greyed Out State (User hasn't liked it yet)
+      refs.likeBtn.style.background = "rgba(255, 255, 255, 0.1)";
+      refs.likeBtn.style.color = "var(--muted)";
+      refs.likeBtn.style.opacity = "0.7";
+      refs.likeBtn.style.filter = "grayscale(100%)";
+    }
   }
 
   refs.previewModal.hidden = false;
@@ -1239,35 +1267,52 @@ async function saveImageDescription() {
 async function handleLikeClick() {
   if (!state.currentPreview || !state.sharedDoc) return;
 
-  // 1. THE GATEKEEPER: Check if they have an account
   if (!state.user) {
     refs.authPromptModal.hidden = false;
     return;
   }
 
-  // Disable button immediately so they can't double-click
   refs.likeBtn.disabled = true;
-  
+
   const ownerUid = state.sharedDoc.ownerUid;
   const imageId = state.currentPreview.id;
+  const currentLikedBy = state.currentPreview.likedBy || [];
+  const hasLiked = currentLikedBy.includes(state.user.uid);
 
   try {
-    await updateDoc(doc(state.db, "users", ownerUid, "images", imageId), {
-      likes: increment(1)
-    });
-    
-    const newLikes = (state.currentPreview.likes || 0) + 1;
-    state.currentPreview.likes = newLikes;
-    
-    // 2. VISUAL LOCK: Change text and keep button disabled for the session
-    refs.likeBtn.innerHTML = `❤️ Liked! (${newLikes})`;
-    refs.likeBtn.style.opacity = "0.6";
-    
-    showToast("Liked! ❤️");
+    const imageRef = doc(state.db, "users", ownerUid, "images", imageId);
+
+    if (hasLiked) {
+      // UNLIKE: Remove their ID from the list
+      await updateDoc(imageRef, { likedBy: arrayRemove(state.user.uid) });
+      state.currentPreview.likedBy = currentLikedBy.filter(uid => uid !== state.user.uid);
+    } else {
+      // LIKE: Add their ID to the list
+      await updateDoc(imageRef, { likedBy: arrayUnion(state.user.uid) });
+      state.currentPreview.likedBy = [...currentLikedBy, state.user.uid];
+    }
+
+    // Instantly update the UI without needing to refresh
+    const newLikesCount = state.currentPreview.likedBy.length;
+    refs.likeBtn.innerHTML = `❤️ Likes ${newLikesCount}`;
+
+    if (!hasLiked) {
+      refs.likeBtn.style.background = "var(--rose)";
+      refs.likeBtn.style.color = "#000";
+      refs.likeBtn.style.opacity = "1";
+      refs.likeBtn.style.filter = "none";
+    } else {
+      refs.likeBtn.style.background = "rgba(255, 255, 255, 0.1)";
+      refs.likeBtn.style.color = "var(--muted)";
+      refs.likeBtn.style.opacity = "0.7";
+      refs.likeBtn.style.filter = "grayscale(100%)";
+    }
+
   } catch (error) {
     console.error(error);
     showToast("Could not drop a like right now.", true);
-    refs.likeBtn.disabled = false; // Only re-enable if it failed
+  } finally {
+    refs.likeBtn.disabled = false;
   }
 }
 
