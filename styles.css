@@ -679,8 +679,8 @@ button {
 }
 
 .viewer-copy h2 {
-  font-size: clamp(2.2rem, 3vw, 3.4rem);
-  line-height: 0.95;
+  font-size: clamp(1.2rem, 1.5vw, 1.8rem); 
+  line-height: 1.1;
   margin-top: 12px;
 }
 
