@@ -19,12 +19,9 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
-
-import {
-  collection, doc, getDoc, getDocs, getFirestore, onSnapshot,
-  orderBy, query, serverTimestamp, setDoc, deleteDoc, updateDoc, increment
+  deleteDoc,
+  updateDoc,
+  increment
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
