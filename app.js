@@ -70,6 +70,47 @@ const state = {
   unsubscribeShared: null
 };
 
+// --- THE THEME ENGINE ---
+const ORBFOLIO_THEMES = {
+  "Deep Orbit": {
+    "--bg-0": "#06121f",
+    "--bg-1": "#0b1c2d",
+    "--bg-2": "#10263a",
+    "--champagne": "#d8b98d",
+    "--seafoam": "#7fd1c5",
+    "--rose": "#f2a995",
+    "--text": "#f4efe7"
+  },
+  "Midnight Neon": {
+    "--bg-0": "#090514",
+    "--bg-1": "#13092b",
+    "--bg-2": "#1f0f45",
+    "--champagne": "#ff007f", // Neon Pink
+    "--seafoam": "#00f3ff",   // Cyan
+    "--rose": "#b500ff",      // Purple
+    "--text": "#e0d6ff"
+  },
+  "Galactic Rose": {
+    "--bg-0": "#1a0b12",
+    "--bg-1": "#2d131f",
+    "--bg-2": "#401b2c",
+    "--champagne": "#f9c8d6", // Light Rose Gold
+    "--seafoam": "#ffb38a",   // Peach
+    "--rose": "#ff4d6d",      // Vibrant Rose
+    "--text": "#fce4ec"
+  }
+};
+
+function applyTheme(themeName) {
+  // Default to Deep Orbit if something goes wrong
+  const theme = ORBFOLIO_THEMES[themeName] || ORBFOLIO_THEMES["Deep Orbit"];
+  const root = document.documentElement;
+  
+  // Inject the specific colors into the CSS variables
+  Object.entries(theme).forEach(([key, value]) => {
+    root.style.setProperty(key, value);
+  });
+}
 document.addEventListener("DOMContentLoaded", boot);
 
 async function boot() {
@@ -155,7 +196,8 @@ function cacheDom() {
   refs.imageDescription = document.getElementById("image-description");
   refs.saveDescriptionBtn = document.getElementById("save-description-btn");
   refs.togglePasswordBtn = document.getElementById("toggle-password-btn");
-
+  refs.themeSelector = document.getElementById("theme-selector"); 
+  
   refs.totalLikes = document.getElementById("total-likes");
   refs.editDescriptionBtn = document.getElementById("edit-description-btn");
   refs.visitorDescription = document.getElementById("visitor-description");
@@ -200,6 +242,24 @@ function bindUI() {
   refs.imageDescription.addEventListener("input", function() {
     this.style.height = "auto";
     this.style.height = (this.scrollHeight) + "px";
+  });
+
+  refs.themeSelector.addEventListener("change", async (event) => {
+    if (!state.user) return;
+    const newTheme = event.target.value;
+    
+    // Apply it visually immediately
+    applyTheme(newTheme);
+    
+    // Save to Firestore profile
+    try {
+      await updateDoc(doc(state.db, "users", state.user.uid), {
+        theme: newTheme
+      });
+      showToast(`Atmosphere changed to ${newTheme} ✨`);
+    } catch (error) {
+      showToast("Failed to save theme.", true);
+    }
   });
 
   refs.closeAuthPromptBtn.addEventListener("click", () => { 
@@ -334,7 +394,8 @@ async function ensureUserProfile(user) {
       shareEnabled: false,
       shareId: createShareId(fallbackName, user.uid),
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      theme: "Deep Orbit"
     };
 
     await setDoc(profileRef, newProfile, { merge: true });
@@ -378,12 +439,15 @@ function subscribeToUserData(uid) {
 
   state.unsubscribeProfile = onSnapshot(
     profileRef,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        return;
-      }
-
+      (snapshot) => {
+      if (!snapshot.exists()) return;
       state.profile = snapshot.data() || {};
+      
+      // Load the saved theme and update the dropdown UI
+      const savedTheme = state.profile.theme || "Deep Orbit";
+      applyTheme(savedTheme);
+      if (refs.themeSelector) refs.themeSelector.value = savedTheme;
+      
       updateStudio();
     },
     (error) => {
@@ -552,6 +616,7 @@ async function openSharedGlobe(shareId) {
       state.sharedDoc = snapshot.data() || {};
       const ownerName = state.sharedDoc.ownerName || "Shared Globe";
       const sharedImages = Array.isArray(state.sharedDoc.images) ? state.sharedDoc.images : [];
+      applyTheme(state.sharedDoc.theme || "Deep Orbit");
 
       refs.sharedOwnerName.textContent = `${ownerName}'s World`;
       refs.sharedCaption.textContent = sharedImages.length
@@ -682,8 +747,8 @@ async function handleLogout() {
   if (!state.auth) {
     return;
   }
-
   await signOut(state.auth);
+  applyTheme("Deep Orbit");
 }
 
 function openUploadModal() {
@@ -902,6 +967,7 @@ const sharedImages = images.map((image) => ({
   await setDoc(doc(state.db, "shared_globes", state.profile.shareId), {
     ownerUid: state.user.uid,
     ownerName: state.profile.displayName || state.user.displayName || "Orbfolio User",
+    theme: state.profile.theme || "Deep Orbit",
     imageCount: sharedImages.length,
     coverImageUrl: sharedImages[0]?.downloadURL || "",
     images: sharedImages,
