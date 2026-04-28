@@ -565,7 +565,7 @@ function updateStudio() {
   refs.addImageBtn.disabled = !HAS_CLOUDINARY_CONFIG;
 
   if (!count) {
-    refs.welcomeCopy.textContent = "Add images and they will settle on a hidden sphere.";
+    refs.welcomeCopy.textContent = "Add images and they will settle on the sphere.";
     refs.sceneTitle.textContent = "Floating memories on an invisible orbit.";
     refs.emptyState.hidden = false;
   } else {
