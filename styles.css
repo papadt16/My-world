@@ -892,6 +892,20 @@ button {
   display: none;
 }
 
+/* Lock the side panel height on desktop to prevent overflow */
+@media (min-width: 1141px) {
+  .dashboard-panel {
+    position: sticky;
+    top: 28px;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    scrollbar-width: none; /* Hides scrollbar on Firefox */
+  }
+  .dashboard-panel::-webkit-scrollbar {
+    display: none; /* Hides scrollbar on Chrome/Safari */
+  }
+}
+
 @media (max-width: 1140px) {
   .mobile-only { display: inline-flex; }
   
