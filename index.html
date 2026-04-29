@@ -101,7 +101,11 @@
         <h1>Orbfolio</h1>
       </div>
 
-      <div class="header-block header-right">
+      <div class="header-block header-right" style="flex-direction: row; display: flex; align-items: center; justify-content: flex-end;">
+        <button id="notif-btn" class="pill-button pill-secondary" type="button" style="position: relative; padding: 0 14px;">
+          🔔 
+          <span id="notif-badge" style="position: absolute; top: -4px; right: -4px; background: var(--rose); color: #000; border-radius: 50%; font-size: 11px; padding: 2px 6px; font-weight: bold;" hidden>0</span>
+        </button>
         <button id="add-image-btn" class="pill-button" type="button">Add Image</button>
         <button id="logout-btn" class="text-button" type="button">Log Out</button>
       </div>
@@ -141,6 +145,26 @@
           </div>
         </section>
 
+     <section id="notif-shell" class="app-shell" hidden>
+       <header class="dashboard-header">
+        <div class="header-block header-left">
+        <button id="back-to-studio-btn" class="pill-button pill-secondary" type="button">← Back to Studio</button>
+        </div>
+        <div class="dashboard-brand">
+        <span class="brand-kicker">Activity</span>
+        <h1>Notifications</h1>
+        </div>
+        <div class="header-block header-right"></div>
+     </header>
+
+     <main class="dashboard-main" style="display: block; max-width: 680px; margin: 0 auto;">
+      <section class="glass-card">
+        <div id="notif-list" class="thumbnail-list">
+          </div>
+        </section>
+     </main>
+     </section>
+        
         <section class="glass-card gallery-card">
           <div class="panel-head">
             <div>
