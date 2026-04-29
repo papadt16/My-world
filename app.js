@@ -23,7 +23,8 @@ import {
   updateDoc,
   increment,
   arrayUnion, 
-  arrayRemove
+  arrayRemove,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
@@ -207,6 +208,12 @@ function cacheDom() {
   refs.previewEyebrow = document.getElementById("preview-eyebrow");
   refs.sidebarBackdrop = document.getElementById("sidebar-backdrop");
   refs.closeSidebarBtn = document.getElementById("close-sidebar-btn");
+
+  refs.notifBtn = document.getElementById("notif-btn");
+  refs.notifBadge = document.getElementById("notif-badge");
+  refs.notifShell = document.getElementById("notif-shell");
+  refs.backToStudioBtn = document.getElementById("back-to-studio-btn");
+  refs.notifList = document.getElementById("notif-list");
   
   refs.toast = document.getElementById("toast");
   refs.authPromptModal = document.getElementById("auth-prompt-modal");
@@ -245,6 +252,21 @@ function bindUI() {
     this.style.height = (this.scrollHeight) + "px";
   });
 
+  refs.notifBtn.addEventListener("click", () => {
+    refs.appShell.hidden = true;
+    refs.notifShell.hidden = false;
+    
+    // Clear the badge count visually when they open it
+    refs.notifBadge.hidden = true; 
+    refs.notifBadge.textContent = "0";
+  });
+
+  refs.backToStudioBtn.addEventListener("click", () => {
+    refs.notifShell.hidden = true;
+    refs.appShell.hidden = false;
+    if (state.viewer) state.viewer.resize();
+  });
+  
   refs.themeSelector.addEventListener("change", async (event) => {
     if (!state.user) return;
     const newTheme = event.target.value;
@@ -432,6 +454,7 @@ async function ensureUserProfile(user) {
 function subscribeToUserData(uid) {
   const profileRef = doc(state.db, "users", uid);
   const imagesQuery = query(collection(state.db, "users", uid, "images"), orderBy("createdAtMs", "desc"));
+  const notifQuery = query(collection(state.db, "users", uid, "notifications"), orderBy("createdAt", "desc"));
 
   state.unsubscribeProfile = onSnapshot(
     profileRef,
@@ -451,6 +474,43 @@ function subscribeToUserData(uid) {
     }
   );
 
+  state.unsubscribeNotifs = onSnapshot(notifQuery, (snapshot) => {
+    const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Update Badge Count
+    const unreadCount = notifs.filter(n => !n.read).length;
+    if (unreadCount > 0) {
+      refs.notifBadge.hidden = false;
+      refs.notifBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+    }
+    
+    // Render the List
+    refs.notifList.replaceChildren();
+    if (!notifs.length) {
+      refs.notifList.innerHTML = `<div class="thumbnail-empty">No activity yet. Share your globe to get some likes!</div>`;
+      return;
+    }
+    
+    notifs.forEach(notif => {
+      const item = document.createElement("button");
+      item.className = "thumbnail-item";
+      item.innerHTML = `
+        <div style="font-size: 24px; text-align: center; width: 100%;">❤️</div>
+        <div class="thumbnail-copy">
+          <strong>${notif.likerName} liked this photo</strong>
+          <span>${formatDate(notif.createdAt?.toMillis() || Date.now())}</span>
+        </div>
+      `;
+      
+      // Click notification to view the image
+      item.addEventListener("click", () => {
+        const targetImg = state.images.find(img => img.id === notif.imageId);
+        if (targetImg) openPreview(targetImg, true);
+      });
+      refs.notifList.appendChild(item);
+    });
+  });
+  
   state.unsubscribeImages = onSnapshot(
     imagesQuery,
     (snapshot) => {
@@ -1367,6 +1427,20 @@ async function handleLikeClick() {
       refs.likeBtn.style.color = "var(--muted)";
       refs.likeBtn.style.opacity = "0.7";
       refs.likeBtn.style.filter = "grayscale(100%)";
+    } else {
+      // LIKE: Add their ID to the list
+      await updateDoc(imageRef, { likedBy: arrayUnion(state.user.uid) });
+      state.currentPreview.likedBy = [...currentLikedBy, state.user.uid];
+      
+      // NEW: Send the notification document to the owner
+      const likerName = state.profile?.displayName || state.user.displayName || "Someone";
+      await addDoc(collection(state.db, "users", ownerUid, "notifications"), {
+        type: "like",
+        imageId: imageId,
+        likerName: likerName,
+        createdAt: serverTimestamp(),
+        read: false
+      });
     }
 
   } catch (error) {
@@ -1486,7 +1560,8 @@ class GlobeViewer {
     this.orbitGroup.add(this.cardsGroup);
     this.scene.add(this.orbitGroup);
     this.scene.add(this.createDustField());
-
+    this.createButterfly();
+    
     this.container.replaceChildren(this.renderer.domElement);
 
     this.handlePointerDown = this.handlePointerDown.bind(this);
@@ -1512,6 +1587,39 @@ class GlobeViewer {
     this.animate();
   }
 
+  createButterfly() {
+    const group = new THREE.Group();
+    
+    // Wing Geometry (Pivot shifted to the edge so they flap correctly)
+    const wingGeo = new THREE.PlaneGeometry(0.12, 0.18);
+    wingGeo.translate(0.06, 0, 0); 
+    
+    const wingMat = new THREE.MeshBasicMaterial({
+      color: 0xffd700, // Golden yellow
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false
+    });
+
+    this.leftWing = new THREE.Mesh(wingGeo, wingMat);
+    this.rightWing = new THREE.Mesh(wingGeo, wingMat);
+    this.rightWing.scale.x = -1; // Flip right wing
+
+    group.add(this.leftWing, this.rightWing);
+
+    this.butterfly = {
+      group: group,
+      state: 'settled',
+      targetCard: null,
+      flyAngle: 0,
+      time: 0
+    };
+
+    group.scale.setScalar(0); // Invisible until cards load
+    this.scene.add(group); // Add to scene so it flies independently of globe rotation
+  }
+  
   createDustField() {
     const points = [];
 
@@ -1776,6 +1884,71 @@ handleWheel(event) {
       mesh.scale.z += (targetScale - mesh.scale.z) * 0.14;
     });
 
+    // --- BUTTERFLY FLIGHT ENGINE ---
+    if (this.butterfly && this.cardMeshes.length > 0) {
+      const b = this.butterfly;
+      b.time += 0.2; // Wing flap speed
+
+      // Always flap wings
+      this.leftWing.rotation.y = Math.sin(b.time) * 0.6 + 0.6;
+      this.rightWing.rotation.y = -(Math.sin(b.time) * 0.6 + 0.6);
+
+      // Initialize first target
+      if (!b.targetCard) {
+        b.targetCard = this.cardMeshes[Math.floor(Math.random() * this.cardMeshes.length)];
+        b.group.scale.setScalar(1);
+      }
+
+      // State transitions
+      if (this.drag.active) {
+        b.state = 'flying';
+        b.flyAngle += 0.04;
+      } else if (b.state === 'flying' && !this.drag.active) {
+        b.targetCard = this.cardMeshes[Math.floor(Math.random() * this.cardMeshes.length)];
+        b.state = 'settling';
+      }
+
+      // Movement Physics
+      if (b.state === 'settled' && b.targetCard) {
+        // Find exact world position of the specific card
+        const targetPos = new THREE.Vector3();
+        b.targetCard.getWorldPosition(targetPos);
+        targetPos.multiplyScalar(1.08); // Hover slightly above it
+        targetPos.y += Math.sin(b.time * 0.2) * 0.05; // Gentle bobbing
+        
+        b.group.position.lerp(targetPos, 0.1);
+        b.group.lookAt(new THREE.Vector3(0,0,0));
+        b.group.rotateX(-Math.PI / 5); // Tilt wings up to the sky
+        
+      } else if (b.state === 'flying') {
+        // Elegant orbit around the globe
+        const radius = 6.0;
+        const flyPos = new THREE.Vector3(
+          Math.cos(b.flyAngle) * radius,
+          Math.sin(b.flyAngle * 1.5) * 2.5, // Wavy up/down
+          Math.sin(b.flyAngle) * radius
+        );
+        b.group.position.lerp(flyPos, 0.08);
+        
+        // Look ahead in the direction of flight
+        const lookPos = flyPos.clone().add(new THREE.Vector3(Math.cos(b.flyAngle + 0.1), 0, Math.sin(b.flyAngle + 0.1)));
+        b.group.lookAt(lookPos);
+        
+      } else if (b.state === 'settling') {
+        const targetPos = new THREE.Vector3();
+        b.targetCard.getWorldPosition(targetPos);
+        targetPos.multiplyScalar(1.08);
+        
+        b.group.position.lerp(targetPos, 0.05);
+        b.group.lookAt(new THREE.Vector3(0,0,0));
+        b.group.rotateX(-Math.PI / 5);
+
+        if (b.group.position.distanceTo(targetPos) < 0.2) {
+          b.state = 'settled'; // Touch down!
+        }
+      }
+    }
+    
     this.renderer.render(this.scene, this.camera);
   }
 }
