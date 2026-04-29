@@ -203,6 +203,7 @@ function cacheDom() {
   refs.visitorDescription = document.getElementById("visitor-description");
   refs.likeBtn = document.getElementById("like-btn");
   refs.likeCount = document.getElementById("like-count");
+  refs.ownerLikesDisplay = document.getElementById("owner-likes-display");
   refs.previewEyebrow = document.getElementById("preview-eyebrow");
   refs.sidebarBackdrop = document.getElementById("sidebar-backdrop");
   refs.closeSidebarBtn = document.getElementById("close-sidebar-btn");
@@ -992,8 +993,12 @@ function openPreview(image, allowDelete) {
   refs.likeCount.textContent = image.likes || 0;
   
   const isOwner = allowDelete;
+  
+  // Calculate the true like count for this specific image
+  const currentLikedBy = image.likedBy || [];
+  const likesCount = currentLikedBy.length || image.likes || 0;
 
-if (isOwner) {
+  if (isOwner) {
     // --- OWNER VIEW ---
     refs.previewEyebrow.hidden = false;
     refs.previewTitle.hidden = false;
@@ -1002,22 +1007,25 @@ if (isOwner) {
     refs.visitorDescription.hidden = true;
     refs.imageDescription.hidden = false;
     refs.imageDescription.value = image.description || "";
-    refs.imageDescription.disabled = true; // Disabled until they click 'Edit'
+    refs.imageDescription.disabled = true;
     
-    // Force the textarea to auto-size to fit existing text
     setTimeout(() => {
       refs.imageDescription.style.height = "auto";
       refs.imageDescription.style.height = (refs.imageDescription.scrollHeight) + "px";
     }, 10);
     
-    // Buttons
+    // Action Buttons
     refs.editDescriptionBtn.hidden = false;
     refs.saveDescriptionBtn.hidden = true;
-    refs.likeBtn.hidden = true; // Owners don't like their own images
     refs.deleteImageBtn.hidden = false;
-    
     refs.downloadBtn.style.display = "inline-flex";
     refs.downloadBtn.href = image.downloadURL.replace('/upload/', '/upload/fl_attachment/');
+    
+    // LIKE BUTTONS: Hide the interactive one, show the static owner badge
+    refs.likeBtn.hidden = true; 
+    refs.ownerLikesDisplay.hidden = false;
+    refs.ownerLikesDisplay.textContent = `❤️ ${likesCount} Likes`;
+
   } else {
     // --- VISITOR VIEW (Shared Link) ---
     refs.imageDescription.hidden = true;
@@ -1025,38 +1033,30 @@ if (isOwner) {
     refs.saveDescriptionBtn.hidden = true;
     refs.deleteImageBtn.hidden = true;
     refs.downloadBtn.style.display = "none";
-    
-    // WE NOW ALWAYS HIDE THE EYEBROW AND TITLE FOR VISITORS
     refs.previewEyebrow.hidden = true;
     refs.previewTitle.hidden = true;
     
     if (image.description && image.description.trim() !== "") {
-      // Show just the description
       refs.visitorDescription.hidden = false;
       refs.visitorDescription.textContent = image.description;
     } else {
-      // MINIMAL VIEW: No description, no title, just the image and like button
       refs.visitorDescription.hidden = true;
     }
     
+    // LIKE BUTTONS: Hide the static owner badge, show the interactive button
+    refs.ownerLikesDisplay.hidden = true;
     refs.likeBtn.hidden = false;
     refs.likeBtn.disabled = false;
     
-    // Check if current user is in the likedBy array
-    const currentLikedBy = image.likedBy || [];
     const hasLiked = state.user && currentLikedBy.includes(state.user.uid);
-    const likesCount = currentLikedBy.length || image.likes || 0;
-    
     refs.likeBtn.innerHTML = `❤️ Likes ${likesCount}`;
 
     if (hasLiked) {
-      // Lit Up State (User already liked it)
       refs.likeBtn.style.background = "var(--rose)";
       refs.likeBtn.style.color = "#000";
       refs.likeBtn.style.opacity = "1";
       refs.likeBtn.style.filter = "none";
     } else {
-      // Greyed Out State (User hasn't liked it yet)
       refs.likeBtn.style.background = "rgba(255, 255, 255, 0.1)";
       refs.likeBtn.style.color = "var(--muted)";
       refs.likeBtn.style.opacity = "0.7";
