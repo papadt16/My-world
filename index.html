@@ -269,10 +269,14 @@
             <p id="visitor-description" class="panel-copy" style="font-size: 1.1rem; margin-top: 10px;" hidden></p>
           </div>
 
-          <div style="display: flex; gap: 12px; margin-top: 18px; justify-content: space-between; align-items: flex-end;">
+            <div style="display: flex; gap: 12px; margin-top: 18px; justify-content: space-between; align-items: flex-end;">
             <div style="display: flex; gap: 12px;">
               <a id="download-btn" class="pill-button pill-secondary" download>Download</a>
               <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete</button>
+              
+              <div id="owner-likes-display" class="pill-button" style="background: rgba(255, 255, 255, 0.05); color: var(--rose); border: 1px solid rgba(255, 255, 255, 0.08); cursor: default; pointer-events: none;" hidden>
+                ❤️ 0 Likes
+              </div>
             </div>
             
             <button id="like-btn" class="pill-button" style="background: var(--rose); color: #000;" hidden>
