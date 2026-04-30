@@ -1411,29 +1411,9 @@ async function handleLikeClick() {
       // LIKE: Add their ID to the list
       await updateDoc(imageRef, { likedBy: arrayUnion(state.user.uid) });
       state.currentPreview.likedBy = [...currentLikedBy, state.user.uid];
-    }
-
-    // Instantly update the UI without needing to refresh
-    const newLikesCount = state.currentPreview.likedBy.length;
-    refs.likeBtn.innerHTML = `❤️ Likes ${newLikesCount}`;
-
-    if (!hasLiked) {
-      refs.likeBtn.style.background = "var(--rose)";
-      refs.likeBtn.style.color = "#000";
-      refs.likeBtn.style.opacity = "1";
-      refs.likeBtn.style.filter = "none";
-    } else {
-      refs.likeBtn.style.background = "rgba(255, 255, 255, 0.1)";
-      refs.likeBtn.style.color = "var(--muted)";
-      refs.likeBtn.style.opacity = "0.7";
-      refs.likeBtn.style.filter = "grayscale(100%)";
-    } else {
-      // LIKE: Add their ID to the list
-      await updateDoc(imageRef, { likedBy: arrayUnion(state.user.uid) });
-      state.currentPreview.likedBy = [...currentLikedBy, state.user.uid];
       
       // NEW: Send the notification document to the owner
-      const likerName = state.profile?.displayName || state.user.displayName || "Someone";
+      const likerName = state.profile?.displayName || state.user?.displayName || "Someone";
       await addDoc(collection(state.db, "users", ownerUid, "notifications"), {
         type: "like",
         imageId: imageId,
@@ -1441,6 +1421,24 @@ async function handleLikeClick() {
         createdAt: serverTimestamp(),
         read: false
       });
+    }
+
+    // Instantly update the UI without needing to refresh
+    const newLikesCount = state.currentPreview.likedBy.length;
+    refs.likeBtn.innerHTML = `❤️ Likes ${newLikesCount}`;
+
+    if (!hasLiked) {
+      // Lit Up State
+      refs.likeBtn.style.background = "var(--rose)";
+      refs.likeBtn.style.color = "#000";
+      refs.likeBtn.style.opacity = "1";
+      refs.likeBtn.style.filter = "none";
+    } else {
+      // Greyed Out State
+      refs.likeBtn.style.background = "rgba(255, 255, 255, 0.1)";
+      refs.likeBtn.style.color = "var(--muted)";
+      refs.likeBtn.style.opacity = "0.7";
+      refs.likeBtn.style.filter = "grayscale(100%)";
     }
 
   } catch (error) {
