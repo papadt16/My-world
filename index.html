@@ -75,7 +75,7 @@
           <div class="field-group" style="position: relative;">
             <label for="password-input">Password</label>
             <input id="password-input" type="password" autocomplete="current-password" placeholder="At least 6 characters" required style="padding-right: 40px;">
-            <button type="button" id="toggle-password-btn" style="position: absolute; right: 12px; top: 38px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--muted); padding: 0;">👁️</button>
+            <button type="button" id="toggle-password-btn" style="position: absolute; right: 12px; top: 38px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--muted); padding: 0;">ðŸ‘ï¸</button>
           </div>
           <div id="auth-error" class="form-feedback error" hidden></div>
 
@@ -102,9 +102,7 @@
       </div>
 
       <div class="header-block header-right" style="flex-direction: row; display: flex; align-items: center; justify-content: flex-end;">
-        <button id="notif-btn" class="pill-button pill-secondary" type="button" style="position: relative; padding: 0 14px;">
-          🔔 
-          <span id="notif-badge" style="position: absolute; top: -4px; right: -4px; background: var(--rose); color: #000; border-radius: 50%; font-size: 11px; padding: 2px 6px; font-weight: bold;" hidden>0</span>
+        <button id="notif-btn" class="pill-button pill-secondary" type="button" style="position: relative; padding: 0 14px;">&#128276; <span id="notif-badge" style="position: absolute; top: -4px; right: -4px; background: var(--rose); color: #000; border-radius: 50%; font-size: 11px; padding: 2px 6px; font-weight: bold;" hidden>0</span>
         </button>
         <button id="add-image-btn" class="pill-button" type="button">Add Image</button>
         <button id="logout-btn" class="text-button" type="button">Log Out</button>
@@ -114,7 +112,7 @@
     <main class="dashboard-main">
       <div id="sidebar-backdrop" class="modal-backdrop mobile-only" hidden style="z-index: 105;"></div>
       <aside class="dashboard-panel">
-        <button id="close-sidebar-btn" class="modal-close mobile-only" type="button" aria-label="Close menu">✕</button>
+        <button id="close-sidebar-btn" class="modal-close mobile-only" type="button" aria-label="Close menu">&#10005;</button>
         <section class="glass-card intro-card">
           <p class="eyebrow">Your World</p>
           <h2 id="welcome-heading">Hello there</h2>
@@ -144,27 +142,6 @@
             </select>
           </div>
         </section>
-
-     <section id="notif-shell" class="app-shell" hidden>
-       <header class="dashboard-header">
-        <div class="header-block header-left">
-        <button id="back-to-studio-btn" class="pill-button pill-secondary" type="button">← Back to Studio</button>
-        </div>
-        <div class="dashboard-brand">
-        <span class="brand-kicker">Activity</span>
-        <h1>Notifications</h1>
-        </div>
-        <div class="header-block header-right"></div>
-     </header>
-
-     <main class="dashboard-main" style="display: block; max-width: 680px; margin: 0 auto;">
-      <section class="glass-card">
-        <div id="notif-list" class="thumbnail-list">
-          </div>
-        </section>
-     </main>
-     </section>
-        
         <section class="glass-card gallery-card">
           <div class="panel-head">
             <div>
@@ -209,6 +186,26 @@
       </section>
     </main>
   </section>
+
+  <section id="notif-shell" class="app-shell" hidden>
+       <header class="dashboard-header">
+        <div class="header-block header-left">
+        <button id="back-to-studio-btn" class="pill-button pill-secondary" type="button">&larr; Back to Studio</button>
+        </div>
+        <div class="dashboard-brand">
+        <span class="brand-kicker">Activity</span>
+        <h1>Notifications</h1>
+        </div>
+        <div class="header-block header-right"></div>
+     </header>
+
+     <main class="dashboard-main" style="display: block; max-width: 680px; margin: 0 auto;">
+      <section class="glass-card">
+        <div id="notif-list" class="thumbnail-list">
+          </div>
+        </section>
+     </main>
+     </section>
 
   <section id="share-shell" class="share-shell" hidden>
     <header class="share-header">
@@ -299,12 +296,12 @@
               <button id="delete-image-btn" class="pill-button pill-danger" type="button" hidden>Delete</button>
               
               <div id="owner-likes-display" class="pill-button" style="background: rgba(255, 255, 255, 0.05); color: var(--rose); border: 1px solid rgba(255, 255, 255, 0.08); cursor: default; pointer-events: none;" hidden>
-                ❤️ 0 Likes
+                â¤ï¸ 0 Likes
               </div>
             </div>
             
             <button id="like-btn" class="pill-button" style="background: var(--rose); color: #000;" hidden>
-              ❤️ Like (<span id="like-count">0</span>)
+              â¤ï¸ Like (<span id="like-count">0</span>)
             </button>
           </div>
         </div>
@@ -331,3 +328,5 @@
   <script type="module" src="./app.js"></script>
 </body>
 </html>
+
+
