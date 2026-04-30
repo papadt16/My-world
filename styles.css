@@ -897,6 +897,7 @@ button {
   .dashboard-panel {
     position: sticky;
     top: 28px;
+    align-self: start;
     max-height: calc(100vh - 56px);
     overflow-y: auto;
     scrollbar-width: none; /* Hides scrollbar on Firefox */
