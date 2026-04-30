@@ -24,7 +24,8 @@ import {
   increment,
   arrayUnion, 
   arrayRemove,
-  addDoc
+  addDoc,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const DEFAULT_CONFIG = {
@@ -252,13 +253,31 @@ function bindUI() {
     this.style.height = (this.scrollHeight) + "px";
   });
 
-  refs.notifBtn.addEventListener("click", () => {
+refs.notifBtn.addEventListener("click", async () => {
     refs.appShell.hidden = true;
     refs.notifShell.hidden = false;
     
-    // Clear the badge count visually when they open it
+    // Visually clear the badge
     refs.notifBadge.hidden = true; 
     refs.notifBadge.textContent = "0";
+
+    // Tell the database to mark them all as read so the badge doesn't come back
+    if (state.user) {
+      try {
+        const batch = writeBatch(state.db);
+        const unreadQuery = query(collection(state.db, "users", state.user.uid, "notifications"));
+        const snapshot = await getDocs(unreadQuery);
+        
+        snapshot.forEach(docSnap => {
+          if (!docSnap.data().read) {
+            batch.update(docSnap.ref, { read: true });
+          }
+        });
+        await batch.commit();
+      } catch (error) {
+        console.error("Failed to mark notifications as read", error);
+      }
+    }
   });
 
   refs.backToStudioBtn.addEventListener("click", () => {
@@ -487,7 +506,7 @@ function subscribeToUserData(uid) {
     // Render the List
     refs.notifList.replaceChildren();
     if (!notifs.length) {
-      refs.notifList.innerHTML = `<div class="thumbnail-empty">No activity yet. Share your globe to get some likes!</div>`;
+      refs.notifList.innerHTML = `<div class="thumbnail-empty" style="color: var(--muted); text-align: center; padding: 40px 20px;">Nothing to show yet. Share your globe to get some likes!</div>`;
       return;
     }
     
@@ -1585,20 +1604,44 @@ class GlobeViewer {
     this.animate();
   }
 
-  createButterfly() {
+   createButterfly() {
     const group = new THREE.Group();
     
-    // Wing Geometry (Pivot shifted to the edge so they flap correctly)
-    const wingGeo = new THREE.PlaneGeometry(0.12, 0.18);
-    wingGeo.translate(0.06, 0, 0); 
+    // Create a beautiful painted wing using Canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = 128; canvas.height = 256;
+    const ctx = canvas.getContext("2d");
     
+    // Draw organic wing shape
+    ctx.beginPath();
+    ctx.moveTo(10, 128); // Center joint
+    ctx.bezierCurveTo(10, 20, 100, 10, 118, 80); // Top wing
+    ctx.bezierCurveTo(128, 140, 80, 160, 60, 160);
+    ctx.bezierCurveTo(100, 200, 80, 240, 20, 240); // Bottom wing
+    ctx.lineTo(10, 128);
+    ctx.closePath();
+    
+    // Paint sunset gradient
+    const grad = ctx.createLinearGradient(0, 0, 128, 256);
+    grad.addColorStop(0, "#ff4d6d"); // Rose
+    grad.addColorStop(0.5, "#ffb38a"); // Peach
+    grad.addColorStop(1, "#7fd1c5"); // Seafoam
+    ctx.fillStyle = grad;
+    ctx.fill();
+    
+    // Add white butterfly spots
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(90, 80, 8, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(105, 110, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(60, 210, 6, 0, Math.PI*2); ctx.fill();
+    
+    const wingTex = new THREE.CanvasTexture(canvas);
     const wingMat = new THREE.MeshBasicMaterial({
-      color: 0xffd700, // Golden yellow
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false
+      map: wingTex, transparent: true, side: THREE.DoubleSide, depthWrite: false
     });
+
+    const wingGeo = new THREE.PlaneGeometry(0.18, 0.26);
+    wingGeo.translate(0.09, 0, 0); // Shift pivot to the joint
 
     this.leftWing = new THREE.Mesh(wingGeo, wingMat);
     this.rightWing = new THREE.Mesh(wingGeo, wingMat);
@@ -1611,11 +1654,12 @@ class GlobeViewer {
       state: 'settled',
       targetCard: null,
       flyAngle: 0,
-      time: 0
+      time: 0,
+      lastDragTime: Date.now() // Track when user stopped scrolling
     };
 
-    group.scale.setScalar(0); // Invisible until cards load
-    this.scene.add(group); // Add to scene so it flies independently of globe rotation
+    group.scale.setScalar(0);
+    this.scene.add(group);
   }
   
   createDustField() {
@@ -1882,71 +1926,81 @@ handleWheel(event) {
       mesh.scale.z += (targetScale - mesh.scale.z) * 0.14;
     });
 
-    // --- BUTTERFLY FLIGHT ENGINE ---
+// --- BUTTERFLY FLIGHT ENGINE ---
     if (this.butterfly && this.cardMeshes.length > 0) {
       const b = this.butterfly;
-      b.time += 0.2; // Wing flap speed
+      b.time += 0.15; // Slow down wing flap
 
       // Always flap wings
       this.leftWing.rotation.y = Math.sin(b.time) * 0.6 + 0.6;
       this.rightWing.rotation.y = -(Math.sin(b.time) * 0.6 + 0.6);
 
-      // Initialize first target
       if (!b.targetCard) {
         b.targetCard = this.cardMeshes[Math.floor(Math.random() * this.cardMeshes.length)];
         b.group.scale.setScalar(1);
       }
 
-      // State transitions
+      // State transitions with 5-second delay
       if (this.drag.active) {
         b.state = 'flying';
-        b.flyAngle += 0.04;
-      } else if (b.state === 'flying' && !this.drag.active) {
-        b.targetCard = this.cardMeshes[Math.floor(Math.random() * this.cardMeshes.length)];
-        b.state = 'settling';
+        b.lastDragTime = Date.now(); // Reset timer while dragging
+      } else if (b.state === 'flying') {
+        // Wait 5 seconds (5000ms) after drag stops to settle
+        if (Date.now() - b.lastDragTime > 5000) {
+          b.targetCard = this.cardMeshes[Math.floor(Math.random() * this.cardMeshes.length)];
+          b.state = 'settling';
+        }
       }
 
       // Movement Physics
       if (b.state === 'settled' && b.targetCard) {
-        // Find exact world position of the specific card
         const targetPos = new THREE.Vector3();
         b.targetCard.getWorldPosition(targetPos);
-        targetPos.multiplyScalar(1.08); // Hover slightly above it
-        targetPos.y += Math.sin(b.time * 0.2) * 0.05; // Gentle bobbing
+        targetPos.multiplyScalar(1.08); 
+        targetPos.y += Math.sin(b.time * 0.1) * 0.05; // Slower bobbing
         
-        b.group.position.lerp(targetPos, 0.1);
-        b.group.lookAt(new THREE.Vector3(0,0,0));
-        b.group.rotateX(-Math.PI / 5); // Tilt wings up to the sky
+        b.group.position.lerp(targetPos, 0.05); // Move slowly with globe
+        
+        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
+          new THREE.Matrix4().lookAt(b.group.position, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
+        );
+        targetQuat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 5));
+        b.group.quaternion.slerp(targetQuat, 0.1);
         
       } else if (b.state === 'flying') {
-        // Elegant orbit around the globe
-        const radius = 6.0;
+        b.flyAngle += 0.008; // VERY slow elegant orbit
+        const radius = 6.5;
         const flyPos = new THREE.Vector3(
           Math.cos(b.flyAngle) * radius,
-          Math.sin(b.flyAngle * 1.5) * 2.5, // Wavy up/down
+          Math.sin(b.flyAngle * 1.5) * 2.5,
           Math.sin(b.flyAngle) * radius
         );
-        b.group.position.lerp(flyPos, 0.08);
+        b.group.position.lerp(flyPos, 0.02); // Drift smoothly
         
-        // Look ahead in the direction of flight
         const lookPos = flyPos.clone().add(new THREE.Vector3(Math.cos(b.flyAngle + 0.1), 0, Math.sin(b.flyAngle + 0.1)));
-        b.group.lookAt(lookPos);
+        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
+          new THREE.Matrix4().lookAt(b.group.position, lookPos, new THREE.Vector3(0,1,0))
+        );
+        b.group.quaternion.slerp(targetQuat, 0.05);
         
       } else if (b.state === 'settling') {
         const targetPos = new THREE.Vector3();
         b.targetCard.getWorldPosition(targetPos);
         targetPos.multiplyScalar(1.08);
         
-        b.group.position.lerp(targetPos, 0.05);
-        b.group.lookAt(new THREE.Vector3(0,0,0));
-        b.group.rotateX(-Math.PI / 5);
+        b.group.position.lerp(targetPos, 0.02); // Settle in very gently
+        
+        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
+          new THREE.Matrix4().lookAt(b.group.position, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0))
+        );
+        targetQuat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI / 5));
+        b.group.quaternion.slerp(targetQuat, 0.05);
 
         if (b.group.position.distanceTo(targetPos) < 0.2) {
-          b.state = 'settled'; // Touch down!
+          b.state = 'settled';
         }
       }
     }
-    
     this.renderer.render(this.scene, this.camera);
   }
 }
