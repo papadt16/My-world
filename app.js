@@ -516,7 +516,7 @@ function subscribeToUserData(uid) {
       item.innerHTML = `
         <div style="font-size: 24px; text-align: center; width: 100%;">❤️</div>
         <div class="thumbnail-copy">
-          <strong>${notif.likerName} liked this photo</strong>
+          <strong>${notif.likerName} liked your photo</strong>
           <span>${formatDate(notif.createdAt?.toMillis() || Date.now())}</span>
         </div>
       `;
