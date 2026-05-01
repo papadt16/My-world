@@ -6,7 +6,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail 
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 import {
   collection,
@@ -152,6 +153,15 @@ function cacheDom() {
   refs.authSubmitBtn = document.getElementById("auth-submit-btn");
   refs.authToggleBtn = document.getElementById("auth-toggle-btn");
 
+  refs.forgotPasswordLink = document.getElementById("forgot-password-link");
+  refs.resetModal = document.getElementById("reset-modal");
+  refs.closeResetBtn = document.getElementById("close-reset-btn");
+  refs.resetForm = document.getElementById("reset-form");
+  refs.resetEmailInput = document.getElementById("reset-email-input");
+  refs.resetSubmitBtn = document.getElementById("reset-submit-btn");
+  refs.resetError = document.getElementById("reset-error");
+  refs.resetSuccess = document.getElementById("reset-success");
+
   refs.appShell = document.getElementById("app-shell");
   refs.shareShell = document.getElementById("share-shell");
   refs.shareBtn = document.getElementById("share-btn");
@@ -246,6 +256,23 @@ function bindUI() {
     refs.passwordInput.type = isPassword ? "text" : "password";
     refs.togglePasswordBtn.style.opacity = isPassword ? "0.5" : "1"; // Visual feedback
   });
+
+  refs.forgotPasswordLink.addEventListener("click", () => {
+    // Pre-fill the email if they already typed it in the login screen
+    if (refs.emailInput.value) {
+      refs.resetEmailInput.value = refs.emailInput.value;
+    }
+    refs.resetError.hidden = true;
+    refs.resetSuccess.hidden = true;
+    refs.resetModal.hidden = false;
+  });
+
+  refs.closeResetBtn.addEventListener("click", () => {
+    refs.resetModal.hidden = true;
+  });
+
+  // Handle the form submission
+  refs.resetForm.addEventListener("submit", handlePasswordReset);
   
   // Auto-resize the description textarea as the user types
   refs.imageDescription.addEventListener("input", function() {
@@ -344,7 +371,9 @@ const toggleMenu = () => {
       } else if (closeType === "preview") {
         closePreviewModal();
       } else if (closeType === "auth-prompt") {
-        refs.authPromptModal.hidden = true; // <-- Add this!
+        refs.authPromptModal.hidden = true; 
+      } else if (closeType === "reset-modal") {
+        refs.resetModal.hidden = true;
       }
     });
   });
@@ -606,6 +635,49 @@ async function handleAuthSubmit(event) {
   }
 }
 
+async function handlePasswordReset(event) {
+  event.preventDefault();
+  
+  refs.resetError.hidden = true;
+  refs.resetSuccess.hidden = true;
+  
+  const email = refs.resetEmailInput.value.trim();
+  
+  if (!email) {
+    refs.resetError.textContent = "Please enter your email address.";
+    refs.resetError.hidden = false;
+    return;
+  }
+
+  refs.resetSubmitBtn.disabled = true;
+  refs.resetSubmitBtn.textContent = "Sending...";
+
+  try {
+    await sendPasswordResetEmail(state.auth, email);
+    
+    // Show success message
+    refs.resetSuccess.textContent = "A password reset link has been sent to your email. Check your spam folder if you don't see it.";
+    refs.resetSuccess.hidden = false;
+    
+    // Reset the form but leave the success message visible
+    refs.resetForm.reset();
+  } catch (error) {
+    console.error(error);
+    const code = error?.code || "";
+    
+    // Format Firebase Auth errors into friendly text
+    if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+      refs.resetError.textContent = "We couldn't find an account attached to that email address.";
+    } else {
+      refs.resetError.textContent = "Something went wrong. Please try again later.";
+    }
+    refs.resetError.hidden = false;
+  } finally {
+    refs.resetSubmitBtn.disabled = false;
+    refs.resetSubmitBtn.textContent = "Send Reset Link";
+  }
+}
+
 function toggleAuthMode() {
   state.authMode = state.authMode === "login" ? "signup" : "login";
   hideAuthError();
@@ -625,6 +697,7 @@ function renderAuthMode() {
     : "Already have an account? Log in";
   refs.nameField.hidden = isLogin;
   refs.passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
+  refs.forgotPasswordLink.hidden = !isLogin;
 }
 
 function showAuth() {
