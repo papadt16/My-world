@@ -678,7 +678,8 @@ button {
   z-index: 2;
 }
 
-.viewer-copy h2 {
+.viewer-copy h2,
+#scene-title { 
   font-size: clamp(1.2rem, 1.5vw, 1.8rem); 
   line-height: 1.1;
   margin-top: 12px;
